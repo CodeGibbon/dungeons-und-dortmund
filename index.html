@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<title>Dungeons & Dortmund</title>
+<meta name="description" content="Gemeinsame Storyline und Charakterbögen für die Runde">
+<meta name="theme-color" content="#3A2A4A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="D&D">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div id="onboarding" class="onboarding">
+  <div class="onboarding-card">
+    <h1>Willkommen, Abenteurer</h1>
+    <p>Wie heißt du?</p>
+    <input id="onboardingNameInput" type="text" placeholder="Dein Name" autocomplete="off">
+    <button id="onboardingSubmit" class="btn-primary" disabled>Los geht's</button>
+  </div>
+</div>
+
+<header class="topbar">
+  <div class="wordmark">Dungeons &amp; Dortmund</div>
+  <button id="identityBtn" class="identity-btn">
+    <span id="identityAvatar" class="avatar"></span>
+    <span id="identityLabel"></span>
+  </button>
+</header>
+
+<main class="content">
+  <div class="section-tabs">
+    <button id="sectionStoryline" class="section-tab active">Storyline</button>
+    <button id="sectionCharacters" class="section-tab">Charaktere</button>
+  </div>
+
+  <!-- ===== Storyline ===== -->
+  <div id="storylineSection">
+    <div id="storylineEmpty" class="empty-state"></div>
+    <div id="storylineList" class="list"></div>
+  </div>
+
+  <!-- ===== Charaktere: Liste ===== -->
+  <div id="charactersSection" class="hidden">
+    <div id="charListView">
+      <div id="charListEmpty" class="empty-state"></div>
+      <div id="charList" class="char-list"></div>
+    </div>
+
+    <!-- ===== Charaktere: Detail / Sheet ===== -->
+    <div id="characterDetail" class="hidden">
+      <button id="backToList" class="back-btn">&lsaquo; Zurück zur Übersicht</button>
+
+      <div class="sheet">
+        <div class="sheet-header">
+          <input id="chName" class="sheet-name-input" placeholder="Charaktername" autocomplete="off">
+          <div class="sheet-sub-row">
+            <input id="chAncestry" class="sheet-sub-input" placeholder="Volk" autocomplete="off">
+            <input id="chClass" class="sheet-sub-input" placeholder="Klasse" autocomplete="off">
+          </div>
+          <div class="level-stepper">
+            <span class="field-label">Level</span>
+            <button id="levelDown" type="button" class="stepper-btn">−</button>
+            <span id="levelValue" class="level-value">1</span>
+            <button id="levelUp" type="button" class="stepper-btn">+</button>
+          </div>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat-box"><label>STR</label><input id="statStr" type="number"></div>
+          <div class="stat-box"><label>DEX</label><input id="statDex" type="number"></div>
+          <div class="stat-box"><label>INT</label><input id="statInt" type="number"></div>
+          <div class="stat-box"><label>WIL</label><input id="statWil" type="number"></div>
+        </div>
+
+        <div class="vitals-grid">
+          <div class="vital-box hp-box">
+            <label>Hitpoints</label>
+            <div class="hp-row">
+              <input id="hpCurrent" type="number" aria-label="Aktuelle HP">
+              <span class="hp-sep">/</span>
+              <input id="hpMax" type="number" aria-label="Max HP">
+            </div>
+            <div class="temp-hp-row">
+              <span>Temp HP</span>
+              <input id="hpTemp" type="number">
+            </div>
+          </div>
+          <div class="vital-box"><label>Initiative</label><input id="initiative" type="number"></div>
+          <div class="vital-box"><label>Armor</label><input id="armor" type="text" placeholder="z.B. 3+Dex"></div>
+          <div class="vital-box"><label>Hit Dice</label><input id="hitDice" type="text" placeholder="z.B. D6"></div>
+        </div>
+
+        <div class="meta-grid">
+          <div class="meta-box"><label>Größe</label><input id="chSize" type="text" placeholder="z.B. 1,80 m"></div>
+          <div class="meta-box"><label>Speed</label><input id="chSpeed" type="text" placeholder="z.B. 6 Felder"></div>
+          <div class="meta-box"><label>Gewicht</label><input id="chWeight" type="text" placeholder="z.B. 80 kg"></div>
+        </div>
+
+        <div class="sheet-block">
+          <div class="section-title-row">
+            <span class="field-label">Wounds</span>
+            <span class="wounds-max-field">Max <input id="woundsMax" type="number" min="1"></span>
+          </div>
+          <div id="woundsPips" class="wounds-pips"></div>
+        </div>
+
+        <div class="sheet-block">
+          <span class="field-label">Skills</span>
+          <div class="skills-head-row">
+            <span></span><span>Grundwert</span><span>Plus</span><span>Gesamt</span>
+          </div>
+          <div id="skillsGrid" class="skills-grid"></div>
+        </div>
+
+        <div class="sheet-block">
+          <span class="field-label">Geld</span>
+          <div class="currency-grid">
+            <div class="currency-box"><label>Kupfer</label><input id="curCopper" type="number" min="0"></div>
+            <div class="currency-box"><label>Silber</label><input id="curSilver" type="number" min="0"></div>
+            <div class="currency-box"><label>Gold</label><input id="curGold" type="number" min="0"></div>
+            <div class="currency-box"><label>Platin</label><input id="curPlatinum" type="number" min="0"></div>
+          </div>
+        </div>
+
+        <div class="sheet-block">
+          <div class="section-title-row">
+            <span class="field-label">Waffen</span>
+            <button id="addWeaponBtn" type="button" class="btn-add">+ Waffe</button>
+          </div>
+          <div id="weaponsEmpty" class="empty-state-inline">Noch keine Waffen im Inventar.</div>
+          <div id="weaponsList" class="item-rows"></div>
+        </div>
+
+        <div class="sheet-block">
+          <div class="section-title-row">
+            <span class="field-label">Gegenstände</span>
+            <button id="addItemBtn" type="button" class="btn-add">+ Gegenstand</button>
+          </div>
+          <div id="itemsEmpty" class="empty-state-inline">Noch keine Gegenstände im Rucksack.</div>
+          <div id="itemsList" class="item-rows"></div>
+        </div>
+
+        <div class="sheet-block">
+          <span class="field-label">Quest-Log</span>
+          <div class="questlog-input-row">
+            <textarea id="questLogInput" placeholder="Notiz an dich selbst..." rows="2"></textarea>
+            <button id="addQuestLogBtn" type="button" class="btn-add">Hinzufügen</button>
+          </div>
+          <div id="questLogEmpty" class="empty-state-inline">Noch keine Einträge.</div>
+          <div id="questLogList" class="questlog-list"></div>
+        </div>
+
+        <button id="deleteCharacterBtn" type="button" class="btn-danger-outline">Charakter löschen</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<button id="fab" class="fab" aria-label="Neu">+</button>
+
+<div id="modalBackdrop" class="modal-backdrop"></div>
+
+<!-- Neuer Storyline-Eintrag -->
+<div id="storylineModal" class="modal">
+  <div class="modal-handle"></div>
+  <h2>Neuer Storyline-Eintrag</h2>
+  <textarea id="storylineInput" rows="6" placeholder="Was ist letzte Session passiert?"></textarea>
+  <div class="modal-actions">
+    <button id="storylineCancelBtn" class="btn-text">Abbrechen</button>
+    <button id="storylineAddBtn" class="btn-primary" disabled>Hinzufügen</button>
+  </div>
+</div>
+
+<!-- Neuer Charakter -->
+<div id="newCharacterModal" class="modal">
+  <div class="modal-handle"></div>
+  <h2>Neuer Charakter</h2>
+  <input id="newCharName" type="text" placeholder="Name" autocomplete="off">
+  <div class="field-row">
+    <div class="field-col">
+      <div class="field-label">Volk</div>
+      <input id="newCharAncestry" type="text" placeholder="z.B. Mensch" autocomplete="off">
+    </div>
+    <div class="field-col">
+      <div class="field-label">Klasse</div>
+      <input id="newCharClass" type="text" placeholder="z.B. Rogue" autocomplete="off">
+    </div>
+  </div>
+  <div class="modal-actions">
+    <button id="newCharCancelBtn" class="btn-text">Abbrechen</button>
+    <button id="newCharAddBtn" class="btn-primary" disabled>Erstellen</button>
+  </div>
+</div>
+
+<!-- Waffe hinzufügen/bearbeiten -->
+<div id="weaponModal" class="modal">
+  <div class="modal-handle"></div>
+  <h2 id="weaponModalTitle">Neue Waffe</h2>
+  <input id="weaponName" type="text" placeholder="Name der Waffe" autocomplete="off">
+  <div class="field-row">
+    <div class="field-col">
+      <div class="field-label">Griff</div>
+      <select id="weaponHandedness">
+        <option value="einhand">Einhand</option>
+        <option value="zweihand">Zweihand</option>
+      </select>
+    </div>
+    <div class="field-col">
+      <div class="field-label">Reichweite</div>
+      <select id="weaponRange">
+        <option value="nahkampf">Nahkampf</option>
+        <option value="fernkampf">Fernkampf</option>
+      </select>
+    </div>
+  </div>
+  <div class="field-row">
+    <div class="field-col">
+      <div class="field-label">Schadenswürfel</div>
+      <input id="weaponDamageDice" type="text" placeholder="z.B. 1d6" autocomplete="off">
+    </div>
+    <div class="field-col checkbox-col">
+      <label class="checkbox-label"><input id="weaponMagical" type="checkbox"> Magisch</label>
+    </div>
+  </div>
+  <div class="field-label">Besonderheit (optional)</div>
+  <textarea id="weaponDescription" rows="2" placeholder="Was kann die Waffe besonderes?"></textarea>
+  <div class="modal-actions">
+    <button id="weaponDeleteBtn" class="btn-text btn-danger hidden">Löschen</button>
+    <button id="weaponCancelBtn" class="btn-text">Abbrechen</button>
+    <button id="weaponSaveBtn" class="btn-primary" disabled>Speichern</button>
+  </div>
+</div>
+
+<!-- Gegenstand hinzufügen/bearbeiten -->
+<div id="itemModal" class="modal">
+  <div class="modal-handle"></div>
+  <h2 id="itemModalTitle">Neuer Gegenstand</h2>
+  <input id="itemName" type="text" placeholder="Bezeichnung" autocomplete="off" list="itemSuggestions">
+  <datalist id="itemSuggestions">
+    <option value="Fackel">
+    <option value="Seil (15m)">
+    <option value="Rationen (1 Tag)">
+    <option value="Wasserschlauch">
+    <option value="Schlafsack">
+    <option value="Zunderbüchse">
+    <option value="Diebeswerkzeug">
+    <option value="Kletterhaken">
+    <option value="Ölflasche (brennbar)">
+    <option value="Heiltrank (klein)">
+    <option value="Gegengift">
+    <option value="Laterne">
+    <option value="Handspiegel">
+    <option value="Kreide">
+    <option value="Pergament & Feder">
+    <option value="Siegelwachs">
+    <option value="Angelausrüstung">
+    <option value="Zeltplane">
+    <option value="Ölzeug (wasserfest)">
+    <option value="Räucherstäbchen">
+  </datalist>
+  <div class="field-row">
+    <div class="field-col">
+      <div class="field-label">Anzahl</div>
+      <input id="itemQty" type="number" min="1" value="1">
+    </div>
+  </div>
+  <div class="field-label">Was macht der Gegenstand? (optional)</div>
+  <textarea id="itemEffect" rows="2" placeholder="z.B. Heilt 1W8 HP beim Trinken"></textarea>
+  <div class="modal-actions">
+    <button id="itemDeleteBtn" class="btn-text btn-danger hidden">Löschen</button>
+    <button id="itemCancelBtn" class="btn-text">Abbrechen</button>
+    <button id="itemSaveBtn" class="btn-primary" disabled>Speichern</button>
+  </div>
+</div>
+
+<!-- Geben (Waffe/Gegenstand an anderen Charakter) -->
+<div id="giveModal" class="modal">
+  <div class="modal-handle"></div>
+  <h2 id="giveModalTitle">Weitergeben</h2>
+  <div class="field-label">An welchen Charakter?</div>
+  <select id="giveTargetSelect"></select>
+  <div id="giveQtyRow" class="field-row hidden">
+    <div class="field-col">
+      <div class="field-label">Anzahl</div>
+      <input id="giveQty" type="number" min="1" value="1">
+    </div>
+  </div>
+  <div class="modal-actions">
+    <button id="giveCancelBtn" class="btn-text">Abbrechen</button>
+    <button id="giveConfirmBtn" class="btn-primary" disabled>Geben</button>
+  </div>
+</div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
