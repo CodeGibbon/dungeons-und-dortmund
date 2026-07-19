@@ -55,7 +55,7 @@
       <div id="charList" class="char-list"></div>
     </div>
 
-    <!-- ===== Charaktere: Detail / Sheet ===== -->
+    <!-- ===== Charaktere: Haupt-Sheet ===== -->
     <div id="characterDetail" class="hidden">
       <button id="backToList" class="back-btn">&lsaquo; Zurück zur Übersicht</button>
 
@@ -74,11 +74,18 @@
           </div>
         </div>
 
-        <div class="stat-grid">
-          <div class="stat-box"><label>STR</label><input id="statStr" type="number"></div>
-          <div class="stat-box"><label>DEX</label><input id="statDex" type="number"></div>
-          <div class="stat-box"><label>INT</label><input id="statInt" type="number"></div>
-          <div class="stat-box"><label>WIL</label><input id="statWil" type="number"></div>
+        <div class="meta-grid">
+          <div class="meta-box"><label>Größe</label><input id="chSize" type="text" placeholder="z.B. 1,80 m"></div>
+          <div class="meta-box"><label>Speed</label><input id="chSpeed" type="text" placeholder="z.B. 6 Felder"></div>
+          <div class="meta-box"><label>Gewicht</label><input id="chWeight" type="text" placeholder="z.B. 80 kg"></div>
+        </div>
+
+        <div class="sheet-block">
+          <div class="section-title-row">
+            <span class="field-label">Wounds</span>
+            <span class="wounds-max-field">Max <input id="woundsMax" type="number" min="1"></span>
+          </div>
+          <div id="woundsPips" class="wounds-pips"></div>
         </div>
 
         <div class="vitals-grid">
@@ -95,58 +102,97 @@
             </div>
           </div>
           <div class="vital-box"><label>Initiative</label><input id="initiative" type="number"></div>
-          <div class="vital-box"><label>Armor</label><input id="armor" type="text" placeholder="z.B. 3+Dex"></div>
-          <div class="vital-box"><label>Hit Dice</label><input id="hitDice" type="text" placeholder="z.B. D6"></div>
-        </div>
-
-        <div class="meta-grid">
-          <div class="meta-box"><label>Größe</label><input id="chSize" type="text" placeholder="z.B. 1,80 m"></div>
-          <div class="meta-box"><label>Speed</label><input id="chSpeed" type="text" placeholder="z.B. 6 Felder"></div>
-          <div class="meta-box"><label>Gewicht</label><input id="chWeight" type="text" placeholder="z.B. 80 kg"></div>
         </div>
 
         <div class="sheet-block">
-          <div class="section-title-row">
-            <span class="field-label">Wounds</span>
-            <span class="wounds-max-field">Max <input id="woundsMax" type="number" min="1"></span>
+          <span class="field-label">Armor</span>
+          <div class="armor-compose-row">
+            <div class="armor-compose-field">
+              <label>Rüstung</label>
+              <div id="armorGearSum" class="armor-compose-value readonly">0</div>
+            </div>
+            <span class="armor-compose-op">+</span>
+            <div class="armor-compose-field">
+              <label>Attribut</label>
+              <select id="armorAttrSelect">
+                <option value="str">STR</option>
+                <option value="dex">DEX</option>
+                <option value="int">INT</option>
+                <option value="wil">WIL</option>
+              </select>
+              <div id="armorAttrValue" class="armor-compose-subvalue"></div>
+            </div>
+            <span class="armor-compose-op">+</span>
+            <div class="armor-compose-field">
+              <label>Manuell</label>
+              <input id="armorManual" type="number">
+            </div>
+            <span class="armor-compose-op">=</span>
+            <div class="armor-compose-field">
+              <label>Gesamt</label>
+              <div id="armorTotal" class="armor-compose-value total">0</div>
+            </div>
           </div>
-          <div id="woundsPips" class="wounds-pips"></div>
         </div>
 
         <div class="sheet-block">
-          <span class="field-label">Skills</span>
+          <span class="field-label">Hit Dice (aus angelegten Waffen)</span>
+          <div id="hitDiceEmpty" class="empty-state-inline">Keine Waffe angelegt.</div>
+          <div id="hitDiceList" class="hitdice-list"></div>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat-box"><label>STR</label><input id="statStr" type="number"></div>
+          <div class="stat-box"><label>DEX</label><input id="statDex" type="number"></div>
+          <div class="stat-box"><label>INT</label><input id="statInt" type="number"></div>
+          <div class="stat-box"><label>WIL</label><input id="statWil" type="number"></div>
+        </div>
+
+        <div class="sheet-block">
+          <span class="field-label">Skills &amp; Fähigkeiten</span>
           <div class="skills-head-row">
-            <span></span><span>Grundwert</span><span>Plus</span><span>Gesamt</span>
+            <span></span><span>Grundwert</span><span>Fähigk.</span><span>Plus</span><span>Gesamt</span>
           </div>
           <div id="skillsGrid" class="skills-grid"></div>
         </div>
 
         <div class="sheet-block">
-          <span class="field-label">Geld</span>
-          <div class="currency-grid">
-            <div class="currency-box"><label>Kupfer</label><input id="curCopper" type="number" min="0"></div>
-            <div class="currency-box"><label>Silber</label><input id="curSilver" type="number" min="0"></div>
-            <div class="currency-box"><label>Gold</label><input id="curGold" type="number" min="0"></div>
-            <div class="currency-box"><label>Platin</label><input id="curPlatinum" type="number" min="0"></div>
-          </div>
-        </div>
+          <span class="field-label">Inventar</span>
 
-        <div class="sheet-block">
-          <div class="section-title-row">
-            <span class="field-label">Waffen</span>
-            <button id="addWeaponBtn" type="button" class="btn-add">+ Waffe</button>
+          <div class="inv-category">
+            <div class="inv-category-title">Geld</div>
+            <div class="currency-grid">
+              <div class="currency-box"><label>Kupfer</label><input id="curCopper" type="number" min="0"></div>
+              <div class="currency-box"><label>Silber</label><input id="curSilver" type="number" min="0"></div>
+              <div class="currency-box"><label>Gold</label><input id="curGold" type="number" min="0"></div>
+              <div class="currency-box"><label>Platin</label><input id="curPlatinum" type="number" min="0"></div>
+            </div>
           </div>
-          <div id="weaponsEmpty" class="empty-state-inline">Noch keine Waffen im Inventar.</div>
-          <div id="weaponsList" class="item-rows"></div>
-        </div>
 
-        <div class="sheet-block">
-          <div class="section-title-row">
-            <span class="field-label">Gegenstände</span>
-            <button id="addItemBtn" type="button" class="btn-add">+ Gegenstand</button>
+          <div class="inv-category">
+            <div class="section-title-row">
+              <span class="inv-category-title">Waffen &amp; Schilde</span>
+              <button id="openWeaponsListBtn" type="button" class="btn-add">Waffenliste öffnen</button>
+            </div>
+            <div id="equippedWeaponsEmpty" class="empty-state-inline">Nichts angelegt.</div>
+            <div id="equippedWeaponsSummary" class="inv-summary-rows"></div>
           </div>
-          <div id="itemsEmpty" class="empty-state-inline">Noch keine Gegenstände im Rucksack.</div>
-          <div id="itemsList" class="item-rows"></div>
+
+          <div class="inv-category">
+            <div class="section-title-row">
+              <span class="inv-category-title">Rüstungen</span>
+              <button id="openArmorListBtn" type="button" class="btn-add">Rüstungsliste öffnen</button>
+            </div>
+            <div id="equippedArmorEmpty" class="empty-state-inline">Nichts angelegt.</div>
+            <div id="equippedArmorSummary" class="inv-summary-rows"></div>
+          </div>
+
+          <div class="inv-category">
+            <div class="section-title-row">
+              <span class="inv-category-title">Gegenstände</span>
+              <button id="openItemsListBtn" type="button" class="btn-add">Gegenstandsliste öffnen</button>
+            </div>
+          </div>
         </div>
 
         <div class="sheet-block">
@@ -160,6 +206,45 @@
         </div>
 
         <button id="deleteCharacterBtn" type="button" class="btn-danger-outline">Charakter löschen</button>
+      </div>
+    </div>
+
+    <!-- ===== Waffenliste ===== -->
+    <div id="weaponsListView" class="hidden">
+      <button id="backToSheetFromWeapons" type="button" class="back-btn">&lsaquo; Zurück zum Charakterbogen</button>
+      <div class="sheet-block">
+        <div class="section-title-row">
+          <span class="field-label">Waffen &amp; Schilde</span>
+          <button id="addWeaponBtn" type="button" class="btn-add">+ Waffe</button>
+        </div>
+        <div id="weaponsEmpty" class="empty-state-inline">Noch keine Waffen im Inventar.</div>
+        <div id="weaponsList" class="item-rows"></div>
+      </div>
+    </div>
+
+    <!-- ===== Rüstungsliste ===== -->
+    <div id="armorListView" class="hidden">
+      <button id="backToSheetFromArmor" type="button" class="back-btn">&lsaquo; Zurück zum Charakterbogen</button>
+      <div class="sheet-block">
+        <div class="section-title-row">
+          <span class="field-label">Rüstungen</span>
+          <button id="addArmorPieceBtn" type="button" class="btn-add">+ Rüstung</button>
+        </div>
+        <div id="armorPiecesEmpty" class="empty-state-inline">Noch keine Rüstung im Inventar.</div>
+        <div id="armorPiecesList" class="item-rows"></div>
+      </div>
+    </div>
+
+    <!-- ===== Gegenstandsliste ===== -->
+    <div id="itemsListView" class="hidden">
+      <button id="backToSheetFromItems" type="button" class="back-btn">&lsaquo; Zurück zum Charakterbogen</button>
+      <div class="sheet-block">
+        <div class="section-title-row">
+          <span class="field-label">Gegenstände</span>
+          <button id="addItemBtn" type="button" class="btn-add">+ Gegenstand</button>
+        </div>
+        <div id="itemsEmpty" class="empty-state-inline">Noch keine Gegenstände im Rucksack.</div>
+        <div id="itemsList" class="item-rows"></div>
       </div>
     </div>
   </div>
@@ -222,21 +307,55 @@
       </select>
     </div>
   </div>
-  <div class="field-row">
-    <div class="field-col">
-      <div class="field-label">Schadenswürfel</div>
-      <input id="weaponDamageDice" type="text" placeholder="z.B. 1d6" autocomplete="off">
-    </div>
-    <div class="field-col checkbox-col">
-      <label class="checkbox-label"><input id="weaponMagical" type="checkbox"> Magisch</label>
-    </div>
+  <div class="checkbox-label-row">
+    <label class="checkbox-label"><input id="weaponMagical" type="checkbox"> Magische Waffe</label>
   </div>
-  <div class="field-label">Besonderheit (optional)</div>
+
+  <div class="field-label">Würfel</div>
+  <div id="weaponDiceRows" class="dice-rows"></div>
+  <button id="addDiceRowBtn" type="button" class="btn-add dice-add-btn">+ Würfel hinzufügen</button>
+
+  <div class="field-label" style="margin-top:14px;">Besonderheit (optional)</div>
   <textarea id="weaponDescription" rows="2" placeholder="Was kann die Waffe besonderes?"></textarea>
   <div class="modal-actions">
     <button id="weaponDeleteBtn" class="btn-text btn-danger hidden">Löschen</button>
     <button id="weaponCancelBtn" class="btn-text">Abbrechen</button>
     <button id="weaponSaveBtn" class="btn-primary" disabled>Speichern</button>
+  </div>
+</div>
+
+<!-- Rüstung hinzufügen/bearbeiten -->
+<div id="armorPieceModal" class="modal">
+  <div class="modal-handle"></div>
+  <h2 id="armorPieceModalTitle">Neue Rüstung</h2>
+  <input id="armorPieceName" type="text" placeholder="Name der Rüstung" autocomplete="off">
+  <div class="field-row">
+    <div class="field-col">
+      <div class="field-label">Gewichtsklasse</div>
+      <select id="armorPieceWeightClass">
+        <option value="leicht">Leicht</option>
+        <option value="mittel">Mittel</option>
+        <option value="schwer">Schwer</option>
+      </select>
+    </div>
+    <div class="field-col">
+      <div class="field-label">Rüstungswert</div>
+      <input id="armorPieceValue" type="number" min="0" value="0">
+    </div>
+  </div>
+  <div class="field-label">Skaliert mit</div>
+  <select id="armorPieceScalesWith">
+    <option value="str">STR</option>
+    <option value="dex">DEX</option>
+    <option value="int">INT</option>
+    <option value="wil">WIL</option>
+  </select>
+  <div class="field-label" style="margin-top:14px;">Besonderheiten (optional)</div>
+  <textarea id="armorPieceDescription" rows="2" placeholder="Was ist an dieser Rüstung besonders?"></textarea>
+  <div class="modal-actions">
+    <button id="armorPieceDeleteBtn" class="btn-text btn-danger hidden">Löschen</button>
+    <button id="armorPieceCancelBtn" class="btn-text">Abbrechen</button>
+    <button id="armorPieceSaveBtn" class="btn-primary" disabled>Speichern</button>
   </div>
 </div>
 
@@ -282,7 +401,25 @@
   </div>
 </div>
 
-<!-- Geben (Waffe/Gegenstand an anderen Charakter) -->
+<!-- Fähigkeit hinzufügen/bearbeiten -->
+<div id="abilityModal" class="modal">
+  <div class="modal-handle"></div>
+  <h2 id="abilityModalTitle">Neue Fähigkeit</h2>
+  <input id="abilityName" type="text" placeholder="Bezeichnung, z.B. Lügner" autocomplete="off">
+  <div class="field-label">Wirkt auf Skill</div>
+  <select id="abilitySkillSelect"></select>
+  <div class="field-label">Wert (Plus/Minus, absolut)</div>
+  <input id="abilityValue" type="number" value="0">
+  <div class="field-label">Wie funktioniert die Fähigkeit? (optional)</div>
+  <textarea id="abilityDescription" rows="3" placeholder="z.B. Jedes Mal wenn man lügt, verdoppelt sich der Bonus"></textarea>
+  <div class="modal-actions">
+    <button id="abilityDeleteBtn" class="btn-text btn-danger hidden">Löschen</button>
+    <button id="abilityCancelBtn" class="btn-text">Abbrechen</button>
+    <button id="abilitySaveBtn" class="btn-primary" disabled>Speichern</button>
+  </div>
+</div>
+
+<!-- Geben (Waffe/Rüstung/Gegenstand an anderen Charakter) -->
 <div id="giveModal" class="modal">
   <div class="modal-handle"></div>
   <h2 id="giveModalTitle">Weitergeben</h2>
