@@ -67,10 +67,20 @@
       <!-- ===== Normal-Modus ===== -->
       <div id="normalModeView" class="sheet">
         <div class="sheet-header">
-          <input id="chName" class="sheet-name-input" placeholder="Charaktername" autocomplete="off">
-          <div class="sheet-sub-row">
-            <input id="chAncestry" class="sheet-sub-input" placeholder="Volk" autocomplete="off">
-            <input id="chClass" class="sheet-sub-input" placeholder="Klasse" autocomplete="off">
+          <div class="sheet-header-top">
+            <label for="chPhotoInput" class="sheet-photo-picker">
+              <img id="chPhotoPreview" class="sheet-photo-img hidden" alt="">
+              <span id="chPhotoPlaceholder" class="sheet-photo-placeholder">📷</span>
+            </label>
+            <button id="chPhotoRemoveBtn" type="button" class="sheet-photo-remove hidden" aria-label="Foto entfernen">&times;</button>
+            <input id="chPhotoInput" type="file" accept="image/*" class="hidden">
+            <div class="sheet-header-namewrap">
+              <input id="chName" class="sheet-name-input" placeholder="Charaktername" autocomplete="off">
+              <div class="sheet-sub-row">
+                <input id="chAncestry" class="sheet-sub-input" placeholder="Volk" autocomplete="off">
+                <input id="chClass" class="sheet-sub-input" placeholder="Klasse" autocomplete="off">
+              </div>
+            </div>
           </div>
           <div class="level-stepper">
             <span class="field-label">Level</span>
@@ -123,15 +133,6 @@
             <span></span><span>Grundwert</span><span>Fähigk.</span><span>Plus</span><span>Gesamt</span>
           </div>
           <div id="skillsGrid" class="skills-grid"></div>
-        </div>
-
-        <div class="sheet-block">
-          <div class="section-title-row">
-            <span class="field-label">Fähigkeiten</span>
-            <button id="addAbilityBtn" type="button" class="btn-add">+ Fähigkeit</button>
-          </div>
-          <div id="abilitiesEmpty" class="empty-state-inline">Noch keine Fähigkeiten.</div>
-          <div id="abilitiesList" class="item-rows"></div>
         </div>
 
         <div class="sheet-block">
@@ -264,10 +265,16 @@
             <span class="attack-sub-title">Kampfskills</span>
             <button id="addCombatSkillBtn" type="button" class="btn-add">+ Kampfskill</button>
           </div>
-          <div id="combatSkillsEmpty" class="empty-state-inline">Noch keine Kampfskills. Haken = zählt zum Gesamtangriff.</div>
+          <div id="combatSkillsEmpty" class="empty-state-inline">Noch keine Kampfskills. Haken = gerade aktiv.</div>
           <div id="combatSkillsList" class="item-rows"></div>
 
-          <div id="attackTotal" class="hitdice-total"></div>
+          <div class="attack-sub-title" style="margin-top:16px;">Gesamtangriff (woher)</div>
+          <div id="attackTotalEmpty" class="empty-state-inline">Keine Angriffsquelle aktiv.</div>
+          <div id="attackTotalList" class="attack-lines"></div>
+
+          <div class="attack-sub-title" style="margin-top:16px;">Sonstige Effekte</div>
+          <div id="otherEffectsEmpty" class="empty-state-inline">Keine sonstigen Effekte aktiv.</div>
+          <div id="otherEffectsList" class="attack-lines"></div>
         </div>
       </div>
     </div>
@@ -486,6 +493,8 @@
   <div class="modal-handle"></div>
   <h2 id="combatSkillModalTitle">Neuer Kampfskill</h2>
   <input id="combatSkillName" type="text" placeholder="Bezeichnung, z.B. Wirbelangriff" autocomplete="off">
+  <div class="field-label">Eigenschaften/Zustände (optional, kommagetrennt)</div>
+  <input id="combatSkillStatuses" type="text" placeholder="z.B. Stealth, Unsichtbar" autocomplete="off">
   <div class="field-label">Würfel</div>
   <div id="combatSkillDiceRows" class="dice-rows"></div>
   <button id="addCombatSkillDiceBtn" type="button" class="btn-add dice-add-btn">+ Würfel hinzufügen</button>

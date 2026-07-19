@@ -50,6 +50,7 @@ function defaultCharacter(name, ancestry, className) {
     speed: '',
     weight: '',
     wounds: { max: 5, current: 0 },
+    photo: null,
     skills: defaultSkills(),
     abilities: [],
     combatSkills: [],
@@ -83,6 +84,7 @@ let giveContext = null;
 let weaponDiceDraft = [];
 let combatSkillDiceDraft = [];
 let abilityEffectsDraft = [];
+let expandedSkills = new Set();
 
 const el = (sel) => document.querySelector(sel);
 
@@ -160,9 +162,10 @@ const chWeight = el('#chWeight');
 const woundsMax = el('#woundsMax');
 const woundsPips = el('#woundsPips');
 const skillsGrid = el('#skillsGrid');
-const abilitiesEmpty = el('#abilitiesEmpty');
-const abilitiesList = el('#abilitiesList');
-const addAbilityBtn = el('#addAbilityBtn');
+const chPhotoInput = el('#chPhotoInput');
+const chPhotoPreview = el('#chPhotoPreview');
+const chPhotoPlaceholder = el('#chPhotoPlaceholder');
+const chPhotoRemoveBtn = el('#chPhotoRemoveBtn');
 const curCopper = el('#curCopper');
 const curSilver = el('#curSilver');
 const curGold = el('#curGold');
@@ -200,7 +203,10 @@ const attackBonusRows = el('#attackBonusRows');
 const addCombatSkillBtn = el('#addCombatSkillBtn');
 const combatSkillsEmpty = el('#combatSkillsEmpty');
 const combatSkillsList = el('#combatSkillsList');
-const attackTotal = el('#attackTotal');
+const attackTotalEmpty = el('#attackTotalEmpty');
+const attackTotalList = el('#attackTotalList');
+const otherEffectsEmpty = el('#otherEffectsEmpty');
+const otherEffectsList = el('#otherEffectsList');
 
 // Listen
 const weaponsList = el('#weaponsList');
@@ -260,6 +266,7 @@ const abilityDeleteBtn = el('#abilityDeleteBtn');
 const combatSkillModal = el('#combatSkillModal');
 const combatSkillModalTitle = el('#combatSkillModalTitle');
 const combatSkillName = el('#combatSkillName');
+const combatSkillStatuses = el('#combatSkillStatuses');
 const combatSkillDiceRows = el('#combatSkillDiceRows');
 const addCombatSkillDiceBtn = el('#addCombatSkillDiceBtn');
 const combatSkillDescription = el('#combatSkillDescription');
@@ -298,26 +305,66 @@ function attrValue(c, key) {
   return c.attributes?.[key] ?? 0;
 }
 
-/* Fähigkeiten: alte Einträge hatten skillKey/value, neue haben effects: [{skillKey, value}] */
-function abilityEffects(ab) {
-  if (Array.isArray(ab.effects)) return ab.effects;
-  if (ab.skillKey) return [{ skillKey: ab.skillKey, value: Number(ab.value) || 0 }];
-  return [];
+/* Fähigkeiten: effects = [{id, skillKey, mode, amount, active}].
+   mode: 'absolute' (Wert wird addiert), 'multiplyBonus' (vervielfacht den Plus-Wert),
+   'multiplyBase' (vervielfacht den Grundwert). Alte Formate (skillKey/value am Objekt,
+   Aktiv-Flag auf Fähigkeit statt Effekt) werden hier automatisch migriert. */
+function normalizedEffects(ability) {
+  let raw;
+  if (Array.isArray(ability.effects)) raw = ability.effects;
+  else if (ability.skillKey) raw = [{ skillKey: ability.skillKey, value: ability.value }];
+  else raw = [];
+  return raw.map(e => ({
+    id: e.id || `${ability.id}:${e.skillKey}`,
+    skillKey: e.skillKey,
+    mode: e.mode || 'absolute',
+    amount: Number(e.amount ?? e.value) || 0,
+    active: e.active ?? ability.active ?? true
+  }));
 }
 
-function abilitiesSumForSkill(c, skillKey) {
-  return (c.abilities || [])
-    .filter(a => a.active)
-    .reduce((sum, a) => sum + abilityEffects(a)
-      .filter(e => e.skillKey === skillKey)
-      .reduce((s, e) => s + (Number(e.value) || 0), 0), 0);
+function effectsForSkill(c, skillKey) {
+  const result = [];
+  (c.abilities || []).forEach(a => {
+    normalizedEffects(a).forEach(e => {
+      if (e.skillKey === skillKey) result.push({ ability: a, effect: e });
+    });
+  });
+  return result;
+}
+
+function toggleAbilityEffect(c, abilityId, effectId) {
+  const abilities = (c.abilities || []).map(a => {
+    if (a.id !== abilityId) return a;
+    const effects = normalizedEffects(a).map(e => e.id === effectId ? { ...e, active: !e.active } : e);
+    return { id: a.id, name: a.name, description: a.description || '', effects };
+  });
+  updateDoc(charRef(c.id), { abilities });
+}
+
+function abilityEffectLabel(effect) {
+  const amount = Number(effect.amount) || 0;
+  if (effect.mode === 'multiplyBase') return `Grundwert ×${amount || 1}`;
+  if (effect.mode === 'multiplyBonus') return `Plus ×${amount || 1}`;
+  return fmtSigned(amount);
 }
 
 function skillTotal(c, def) {
-  const base = attrValue(c, ATTR_LABEL_TO_KEY[def.attr]);
-  const abil = abilitiesSumForSkill(c, def.key);
-  const bonus = Number(c.skills?.[def.key]?.bonus) || 0;
-  return { base, abil, bonus, total: base + abil + bonus };
+  const attrKey = ATTR_LABEL_TO_KEY[def.attr];
+  const rawBase = attrValue(c, attrKey);
+  const rawBonus = Number(c.skills?.[def.key]?.bonus) || 0;
+  let base = rawBase;
+  let bonus = rawBonus;
+  let additive = 0;
+  effectsForSkill(c, def.key).forEach(({ effect }) => {
+    if (!effect.active) return;
+    const amount = Number(effect.amount) || 0;
+    if (effect.mode === 'multiplyBase') base *= (amount || 1);
+    else if (effect.mode === 'multiplyBonus') bonus *= (amount || 1);
+    else additive += amount;
+  });
+  const abil = (base - rawBase) + (bonus - rawBonus) + additive;
+  return { base: rawBase, bonus: rawBonus, abil, total: base + bonus + additive };
 }
 
 function armorGearSumCalc(c) {
@@ -521,6 +568,7 @@ function showCharList() {
 
 function showCharacterDetail(id) {
   currentCharacterId = id;
+  expandedSkills.clear();
   charListView.classList.add('hidden');
   weaponsListView.classList.add('hidden');
   armorListView.classList.add('hidden');
@@ -584,7 +632,14 @@ function renderCharList() {
 
     const avatar = document.createElement('div');
     avatar.className = 'char-card-avatar';
-    avatar.textContent = initials(c.name);
+    if (c.photo) {
+      const img = document.createElement('img');
+      img.src = c.photo;
+      img.alt = '';
+      avatar.appendChild(img);
+    } else {
+      avatar.textContent = initials(c.name);
+    }
     card.appendChild(avatar);
 
     const info = document.createElement('div');
@@ -722,6 +777,60 @@ levelDown.addEventListener('click', () => {
   updateDoc(charRef(c.id), { level: Math.max(1, (c.level || 1) - 1) });
 });
 
+/* ---------- Charakterfoto ---------- */
+
+async function compressImageToDataURL(file, maxDim = 480, quality = 0.75) {
+  const img = await new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = URL.createObjectURL(file);
+  });
+  let { width, height } = img;
+  if (width >= height && width > maxDim) {
+    height = Math.round(height * (maxDim / width));
+    width = maxDim;
+  } else if (height > maxDim) {
+    width = Math.round(width * (maxDim / height));
+    height = maxDim;
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0, width, height);
+  URL.revokeObjectURL(img.src);
+
+  let q = quality;
+  let dataUrl = canvas.toDataURL('image/jpeg', q);
+  while (dataUrl.length > 400000 && q > 0.3) {
+    q -= 0.1;
+    dataUrl = canvas.toDataURL('image/jpeg', q);
+  }
+  return dataUrl;
+}
+
+chPhotoInput.addEventListener('change', async () => {
+  const file = chPhotoInput.files[0];
+  const c = getCurrentCharacter();
+  if (!file || !c) return;
+  try {
+    const dataUrl = await compressImageToDataURL(file);
+    updateDoc(charRef(c.id), { photo: dataUrl });
+  } catch (e) {
+    alert('Foto konnte nicht geladen werden.');
+  } finally {
+    chPhotoInput.value = '';
+  }
+});
+
+chPhotoRemoveBtn.addEventListener('click', (e) => {
+  e.preventDefault();
+  const c = getCurrentCharacter();
+  if (!c) return;
+  updateDoc(charRef(c.id), { photo: null });
+});
+
 /* ---------- Wounds ---------- */
 
 function renderWoundsPips(c) {
@@ -761,21 +870,21 @@ function renderArmorComposite(c) {
 
 /* ---------- Würfel-Helfer ---------- */
 
-function aggregateDiceEntries(entryLists) {
-  const map = new Map();
-  entryLists.forEach(entries => {
-    (entries || []).forEach(e => {
-      const key = `${e.dieType}|${e.damageType}|${e.magicElement || ''}`;
-      map.set(key, (map.get(key) || 0) + (Number(e.count) || 0));
-    });
-  });
-  return [...map.entries()].map(([key, count]) => {
-    const [dieType, damageType, magicElement] = key.split('|');
-    return { dieType, damageType, magicElement, count };
-  });
+function isDamageEntry(e) {
+  return !e.target || e.target === 'schaden';
+}
+
+function targetLabelFor(e) {
+  if (e.target === 'speed') return 'Speed';
+  if (e.target === 'initiative') return 'Initiative';
+  if (e.target === 'sonstiges') return e.targetLabel || 'Sonstiges';
+  return 'Schaden';
 }
 
 function diceEntryLabel(e) {
+  if (!isDamageEntry(e)) {
+    return `${e.count}×${(e.dieType || '').toUpperCase()} → ${targetLabelFor(e)}`;
+  }
   const typeLabel = e.damageType === 'magisch' ? `Magisch${e.magicElement ? ': ' + e.magicElement : ''}` : 'Physisch';
   return `${e.count}×${(e.dieType || '').toUpperCase()} (${typeLabel})`;
 }
@@ -784,33 +893,7 @@ function diceListLabel(entries) {
   return (entries || []).map(diceEntryLabel).join(', ');
 }
 
-/* Generische Würfel-Zeile: draft-Array wird direkt mutiert, onStructureChange rendert neu */
-function buildDiceRow(draft, index, onStructureChange) {
-  const entry = draft[index];
-  const row = document.createElement('div');
-  row.className = 'dice-row';
-
-  const dieSelect = document.createElement('select');
-  DICE_TYPES.forEach(t => {
-    const opt = document.createElement('option');
-    opt.value = t;
-    opt.textContent = t.toUpperCase();
-    if (t === entry.dieType) opt.selected = true;
-    dieSelect.appendChild(opt);
-  });
-  dieSelect.addEventListener('change', () => { entry.dieType = dieSelect.value; onStructureChange(false); });
-  row.appendChild(dieSelect);
-
-  const countInput = document.createElement('input');
-  countInput.type = 'number';
-  countInput.min = '1';
-  countInput.value = entry.count ?? 1;
-  countInput.addEventListener('change', () => {
-    entry.count = Math.max(1, parseInt(countInput.value, 10) || 1);
-    onStructureChange(false);
-  });
-  row.appendChild(countInput);
-
+function appendDamageFields(row, entry, onStructureChange) {
   const typeSelect = document.createElement('select');
   [['physisch', 'Physisch'], ['magisch', 'Magisch']].forEach(([v, l]) => {
     const opt = document.createElement('option');
@@ -835,6 +918,70 @@ function buildDiceRow(draft, index, onStructureChange) {
     onStructureChange(false);
   });
   row.appendChild(elementInput);
+}
+
+/* Generische Würfel-Zeile: draft-Array wird direkt mutiert, onStructureChange(strukturell?) rendert neu.
+   opts.withTarget erlaubt "Wirkt auf" (Schaden/Speed/Initiative/Sonstiges) statt reiner Schadenswürfel. */
+function buildDiceRow(draft, index, onStructureChange, opts = {}) {
+  const entry = draft[index];
+  if (opts.withTarget && !entry.target) entry.target = 'schaden';
+  const row = document.createElement('div');
+  row.className = 'dice-row';
+
+  const dieSelect = document.createElement('select');
+  dieSelect.className = 'dice-die-select';
+  DICE_TYPES.forEach(t => {
+    const opt = document.createElement('option');
+    opt.value = t;
+    opt.textContent = t.toUpperCase();
+    if (t === entry.dieType) opt.selected = true;
+    dieSelect.appendChild(opt);
+  });
+  dieSelect.addEventListener('change', () => { entry.dieType = dieSelect.value; onStructureChange(false); });
+  row.appendChild(dieSelect);
+
+  const countInput = document.createElement('input');
+  countInput.className = 'dice-count-input';
+  countInput.type = 'number';
+  countInput.min = '1';
+  countInput.value = entry.count ?? 1;
+  countInput.addEventListener('change', () => {
+    entry.count = Math.max(1, parseInt(countInput.value, 10) || 1);
+    onStructureChange(false);
+  });
+  row.appendChild(countInput);
+
+  if (opts.withTarget) {
+    const targetSelect = document.createElement('select');
+    [['schaden', 'Schaden'], ['speed', 'Speed'], ['initiative', 'Initiative'], ['sonstiges', 'Sonstiges']].forEach(([v, l]) => {
+      const opt = document.createElement('option');
+      opt.value = v;
+      opt.textContent = l;
+      if (v === entry.target) opt.selected = true;
+      targetSelect.appendChild(opt);
+    });
+    targetSelect.addEventListener('change', () => {
+      entry.target = targetSelect.value;
+      onStructureChange(true);
+    });
+    row.appendChild(targetSelect);
+
+    if (entry.target === 'sonstiges') {
+      const labelInput = document.createElement('input');
+      labelInput.type = 'text';
+      labelInput.placeholder = 'Ziel benennen';
+      labelInput.value = entry.targetLabel || '';
+      labelInput.addEventListener('change', () => {
+        entry.targetLabel = labelInput.value.trim();
+        onStructureChange(false);
+      });
+      row.appendChild(labelInput);
+    }
+  }
+
+  if (!opts.withTarget || entry.target === 'schaden') {
+    appendDamageFields(row, entry, onStructureChange);
+  }
 
   const removeBtn = document.createElement('button');
   removeBtn.type = 'button';
@@ -850,33 +997,47 @@ function buildDiceRow(draft, index, onStructureChange) {
   return row;
 }
 
-function renderDraftDiceRows(container, draft) {
+function renderDraftDiceRows(container, draft, opts) {
   container.innerHTML = '';
   draft.forEach((_, i) => container.appendChild(buildDiceRow(draft, i, (rerender) => {
-    if (rerender) renderDraftDiceRows(container, draft);
-  })));
+    if (rerender) renderDraftDiceRows(container, draft, opts);
+  }, opts)));
 }
 
-/* ---------- Skills (Normal-Modus) ---------- */
+/* ---------- Skills & Fähigkeiten (Normal-Modus) ---------- */
 
 function renderSkillsGrid(c) {
   skillsGrid.innerHTML = '';
   SKILL_DEFS.forEach(def => {
     const { base, abil, bonus, total } = skillTotal(c, def);
 
+    const wrap = document.createElement('div');
+    wrap.className = 'skill-row-wrap';
+
     const row = document.createElement('div');
     row.className = 'skill-row';
 
-    const nameCell = document.createElement('div');
+    const nameToggle = document.createElement('button');
+    nameToggle.type = 'button';
+    nameToggle.className = 'skill-name-toggle' + (expandedSkills.has(def.key) ? ' expanded' : '');
+    const caret = document.createElement('span');
+    caret.className = 'caret';
+    caret.textContent = '▸';
     const nameSpan = document.createElement('span');
     nameSpan.className = 'skill-name';
     nameSpan.textContent = def.label;
     const attrSpan = document.createElement('span');
     attrSpan.className = 'skill-attr';
     attrSpan.textContent = def.attr;
-    nameCell.appendChild(nameSpan);
-    nameCell.appendChild(attrSpan);
-    row.appendChild(nameCell);
+    nameToggle.appendChild(caret);
+    nameToggle.appendChild(nameSpan);
+    nameToggle.appendChild(attrSpan);
+    nameToggle.addEventListener('click', () => {
+      if (expandedSkills.has(def.key)) expandedSkills.delete(def.key);
+      else expandedSkills.add(def.key);
+      renderSkillsGrid(c);
+    });
+    row.appendChild(nameToggle);
 
     const baseCell = document.createElement('div');
     baseCell.className = 'skill-readonly';
@@ -901,73 +1062,74 @@ function renderSkillsGrid(c) {
     totalCell.textContent = fmtSigned(total);
     row.appendChild(totalCell);
 
-    skillsGrid.appendChild(row);
-  });
-}
+    wrap.appendChild(row);
 
-/* ---------- Fähigkeiten (eigenes Fenster, Normal-Modus) ---------- */
+    if (expandedSkills.has(def.key)) {
+      const panel = document.createElement('div');
+      panel.className = 'skill-abilities-panel';
+      const entries = effectsForSkill(c, def.key);
+      if (!entries.length) {
+        const empty = document.createElement('div');
+        empty.className = 'empty-state-inline';
+        empty.textContent = 'Noch keine Fähigkeiten für diesen Skill.';
+        panel.appendChild(empty);
+      }
+      entries.forEach(({ ability, effect }) => panel.appendChild(renderAbilityEffectListRow(c, ability, effect)));
 
-addAbilityBtn.addEventListener('click', () => openAbilityModal(null));
+      const addBtn = document.createElement('button');
+      addBtn.type = 'button';
+      addBtn.className = 'btn-add ability-add-row';
+      addBtn.textContent = '+ Fähigkeit';
+      addBtn.addEventListener('click', () => openAbilityModal(null, def.key));
+      panel.appendChild(addBtn);
 
-function abilityEffectsLabel(ab) {
-  return abilityEffects(ab)
-    .map(e => `${SKILL_LABELS[e.skillKey] || e.skillKey} ${fmtSigned(Number(e.value) || 0)}`)
-    .join(' · ');
-}
-
-function renderAbilitiesList(c) {
-  const abilities = c.abilities || [];
-  abilitiesList.innerHTML = '';
-  abilitiesEmpty.style.display = abilities.length ? 'none' : 'block';
-
-  abilities.forEach(ab => {
-    const row = document.createElement('div');
-    row.className = 'item-row' + (ab.active ? ' equipped' : '');
-
-    const top = document.createElement('div');
-    top.className = 'item-row-top';
-
-    const check = document.createElement('button');
-    check.type = 'button';
-    check.className = 'equip-checkbox' + (ab.active ? ' checked' : '');
-    check.setAttribute('aria-label', ab.active ? 'Deaktivieren' : 'Aktivieren');
-    check.addEventListener('click', () => {
-      const abilities = (c.abilities || []).map(a => a.id === ab.id ? { ...a, active: !a.active } : a);
-      updateDoc(charRef(c.id), { abilities });
-    });
-    top.appendChild(check);
-
-    const nameWrap = document.createElement('div');
-    nameWrap.style.flex = '1';
-    const nameEl = document.createElement('div');
-    nameEl.className = 'item-row-name';
-    nameEl.textContent = ab.name;
-    nameWrap.appendChild(nameEl);
-    const tags = document.createElement('div');
-    tags.className = 'item-row-tags';
-    tags.textContent = abilityEffectsLabel(ab) || 'Kein Skill-Effekt';
-    nameWrap.appendChild(tags);
-    top.appendChild(nameWrap);
-
-    row.appendChild(top);
-
-    if (ab.description) {
-      const desc = document.createElement('div');
-      desc.className = 'item-row-desc';
-      desc.textContent = ab.description;
-      row.appendChild(desc);
+      wrap.appendChild(panel);
     }
 
-    const actions = document.createElement('div');
-    actions.className = 'item-row-actions';
-    const editBtn = document.createElement('button');
-    editBtn.textContent = 'Bearbeiten';
-    editBtn.addEventListener('click', () => openAbilityModal(ab));
-    actions.appendChild(editBtn);
-    row.appendChild(actions);
-
-    abilitiesList.appendChild(row);
+    skillsGrid.appendChild(wrap);
   });
+}
+
+function renderAbilityEffectListRow(c, ability, effect) {
+  const row = document.createElement('div');
+  row.className = 'ability-row';
+
+  const check = document.createElement('button');
+  check.type = 'button';
+  check.className = 'equip-checkbox' + (effect.active ? ' checked' : '');
+  check.setAttribute('aria-label', effect.active ? 'Deaktivieren' : 'Aktivieren');
+  check.addEventListener('click', () => toggleAbilityEffect(c, ability.id, effect.id));
+  row.appendChild(check);
+
+  const info = document.createElement('div');
+  info.className = 'ability-row-info';
+  const name = document.createElement('div');
+  name.className = 'ability-row-name';
+  name.textContent = ability.name;
+  info.appendChild(name);
+  if (ability.description) {
+    const desc = document.createElement('div');
+    desc.className = 'ability-row-desc';
+    desc.textContent = ability.description;
+    info.appendChild(desc);
+  }
+  row.appendChild(info);
+
+  const value = document.createElement('div');
+  value.className = 'ability-row-value' + (effect.mode !== 'absolute' ? ' multiplier' : '');
+  value.textContent = abilityEffectLabel(effect);
+  row.appendChild(value);
+
+  const actions = document.createElement('div');
+  actions.className = 'ability-row-actions';
+  const editBtn = document.createElement('button');
+  editBtn.type = 'button';
+  editBtn.textContent = 'Bearbeiten';
+  editBtn.addEventListener('click', () => openAbilityModal(ability, effect.skillKey));
+  actions.appendChild(editBtn);
+  row.appendChild(actions);
+
+  return row;
 }
 
 function buildAbilityEffectRow(index) {
@@ -976,6 +1138,7 @@ function buildAbilityEffectRow(index) {
   row.className = 'dice-row ability-effect-row';
 
   const skillSelect = document.createElement('select');
+  skillSelect.className = 'effect-skill-select';
   SKILL_DEFS.forEach(def => {
     const opt = document.createElement('option');
     opt.value = def.key;
@@ -986,11 +1149,33 @@ function buildAbilityEffectRow(index) {
   skillSelect.addEventListener('change', () => { entry.skillKey = skillSelect.value; });
   row.appendChild(skillSelect);
 
-  const valueInput = document.createElement('input');
-  valueInput.type = 'number';
-  valueInput.value = entry.value ?? 0;
-  valueInput.addEventListener('change', () => { entry.value = Number(valueInput.value) || 0; });
-  row.appendChild(valueInput);
+  const modeSelect = document.createElement('select');
+  modeSelect.className = 'effect-mode-select';
+  [
+    ['absolute', 'Absoluter Bonus (+/-)'],
+    ['multiplyBonus', 'Vervielfacht Plus-Wert'],
+    ['multiplyBase', 'Vervielfacht Grundwert']
+  ].forEach(([v, l]) => {
+    const opt = document.createElement('option');
+    opt.value = v;
+    opt.textContent = l;
+    if (v === entry.mode) opt.selected = true;
+    modeSelect.appendChild(opt);
+  });
+  modeSelect.addEventListener('change', () => {
+    entry.mode = modeSelect.value;
+    if (entry.mode !== 'absolute' && (!entry.amount || entry.amount < 2)) entry.amount = 2;
+    renderAbilityEffectRows();
+  });
+  row.appendChild(modeSelect);
+
+  const amountInput = document.createElement('input');
+  amountInput.className = 'effect-amount-input';
+  amountInput.type = 'number';
+  amountInput.value = entry.amount ?? 0;
+  amountInput.title = entry.mode === 'absolute' ? 'Wert (+/-)' : 'Faktor (2 = verdoppeln, 3 = verdreifachen, ...)';
+  amountInput.addEventListener('change', () => { entry.amount = Number(amountInput.value) || 0; });
+  row.appendChild(amountInput);
 
   const removeBtn = document.createElement('button');
   removeBtn.type = 'button';
@@ -1012,16 +1197,18 @@ function renderAbilityEffectRows() {
 }
 
 addAbilityEffectBtn.addEventListener('click', () => {
-  abilityEffectsDraft.push({ skillKey: SKILL_DEFS[0].key, value: 0 });
+  abilityEffectsDraft.push({ id: generateId(), skillKey: SKILL_DEFS[0].key, mode: 'absolute', amount: 0, active: true });
   renderAbilityEffectRows();
 });
 
-function openAbilityModal(ability) {
+function openAbilityModal(ability, contextSkillKey) {
   editingAbilityId = ability ? ability.id : null;
   abilityModalTitle.textContent = ability ? 'Fähigkeit bearbeiten' : 'Neue Fähigkeit';
   abilityName.value = ability ? ability.name : '';
   abilityDescription.value = ability ? (ability.description || '') : '';
-  abilityEffectsDraft = ability ? abilityEffects(ability).map(e => ({ ...e })) : [{ skillKey: SKILL_DEFS[0].key, value: 0 }];
+  abilityEffectsDraft = ability
+    ? normalizedEffects(ability).map(e => ({ ...e }))
+    : [{ id: generateId(), skillKey: contextSkillKey || SKILL_DEFS[0].key, mode: 'absolute', amount: 0, active: true }];
   renderAbilityEffectRows();
   abilityDeleteBtn.classList.toggle('hidden', !ability);
   abilitySaveBtn.disabled = abilityName.value.trim().length === 0;
@@ -1051,13 +1238,17 @@ abilitySaveBtn.addEventListener('click', () => {
   const entry = {
     id: editingAbilityId || generateId(),
     name,
-    effects: abilityEffectsDraft.map(e => ({ skillKey: e.skillKey, value: Number(e.value) || 0 })),
-    description: abilityDescription.value.trim(),
-    active: true
+    effects: abilityEffectsDraft.map(e => ({
+      id: e.id || generateId(),
+      skillKey: e.skillKey,
+      mode: e.mode || 'absolute',
+      amount: Number(e.amount) || 0,
+      active: e.active !== false
+    })),
+    description: abilityDescription.value.trim()
   };
   if (editingAbilityId) {
     const idx = abilities.findIndex(a => a.id === editingAbilityId);
-    if (idx !== -1) entry.active = abilities[idx].active;
     if (idx !== -1) abilities[idx] = entry; else abilities.push(entry);
   } else {
     abilities.push(entry);
@@ -1109,18 +1300,34 @@ function renderCombatQuick(c) {
 
 function renderAttackBonusRows(c) {
   const arr = (c.attackBonusDice || []).map(e => ({ ...e }));
-  attackBonusRows.innerHTML = '';
-  arr.forEach((_, i) => attackBonusRows.appendChild(buildDiceRow(arr, i, () => {
-    updateDoc(charRef(c.id), { attackBonusDice: arr.map(e => ({ ...e })) });
-  })));
+  function rerender() {
+    attackBonusRows.innerHTML = '';
+    arr.forEach((_, i) => attackBonusRows.appendChild(buildDiceRow(arr, i, (structural) => {
+      updateDoc(charRef(c.id), { attackBonusDice: arr.map(e => ({ ...e })) });
+      if (structural) rerender();
+    }, { withTarget: true })));
+  }
+  rerender();
 }
 
 addAttackBonusDieBtn.addEventListener('click', () => {
   const c = getCurrentCharacter();
   if (!c) return;
-  const arr = [...(c.attackBonusDice || []), { id: generateId(), dieType: 'w6', count: 1, damageType: 'physisch', magicElement: '' }];
+  const arr = [...(c.attackBonusDice || []), {
+    id: generateId(), dieType: 'w6', count: 1, damageType: 'physisch', magicElement: '', target: 'schaden', targetLabel: ''
+  }];
   updateDoc(charRef(c.id), { attackBonusDice: arr });
 });
+
+function buildSourceLine(label, text) {
+  const line = document.createElement('div');
+  line.className = 'attack-source-line';
+  const b = document.createElement('b');
+  b.textContent = label + ':';
+  line.appendChild(b);
+  line.appendChild(document.createTextNode(' ' + text));
+  return line;
+}
 
 function renderAttack(c) {
   const weapons = equippedWeapons(c);
@@ -1144,16 +1351,36 @@ function renderAttack(c) {
   renderAttackBonusRows(c);
   renderCombatSkillsList(c);
 
-  const includedSkillDice = (c.combatSkills || []).filter(s => s.included).map(s => s.diceEntries || []);
-  const allLists = [
-    ...weapons.map(w => w.diceEntries || []),
-    c.attackBonusDice || [],
-    ...includedSkillDice
-  ];
-  const agg = aggregateDiceEntries(allLists);
-  attackTotal.textContent = agg.length
-    ? 'Gesamtangriff: ' + agg.map(diceEntryLabel).join(' + ')
-    : 'Gesamtangriff: — (nichts angelegt/aktiviert)';
+  const sources = [];
+  weapons.forEach(w => sources.push({ label: w.name, entries: w.diceEntries || [] }));
+  if ((c.attackBonusDice || []).length) sources.push({ label: 'Eigener Bonus', entries: c.attackBonusDice });
+  (c.combatSkills || []).filter(s => s.included).forEach(s => {
+    if ((s.diceEntries || []).length) sources.push({ label: s.name, entries: s.diceEntries });
+  });
+
+  attackTotalList.innerHTML = '';
+  let anyDamage = false;
+  sources.forEach(src => {
+    src.entries.filter(isDamageEntry).forEach(e => {
+      anyDamage = true;
+      attackTotalList.appendChild(buildSourceLine(src.label, diceEntryLabel(e)));
+    });
+  });
+  attackTotalEmpty.style.display = anyDamage ? 'none' : 'block';
+
+  otherEffectsList.innerHTML = '';
+  let anyOther = false;
+  sources.forEach(src => {
+    src.entries.filter(e => !isDamageEntry(e)).forEach(e => {
+      anyOther = true;
+      otherEffectsList.appendChild(buildSourceLine(src.label, diceEntryLabel(e)));
+    });
+  });
+  (c.combatSkills || []).filter(s => s.included && (s.statuses || []).length).forEach(s => {
+    anyOther = true;
+    otherEffectsList.appendChild(buildSourceLine(s.name, 'gewährt ' + s.statuses.join(', ')));
+  });
+  otherEffectsEmpty.style.display = anyOther ? 'none' : 'block';
 }
 
 /* ---------- Kampfskills ---------- */
@@ -1192,6 +1419,19 @@ function renderCombatSkillsList(c) {
     tags.className = 'item-row-tags';
     tags.textContent = diceListLabel(cs.diceEntries) || 'keine Würfel';
     nameWrap.appendChild(tags);
+
+    if ((cs.statuses || []).length) {
+      const statusWrap = document.createElement('div');
+      statusWrap.className = 'combat-status-tags';
+      cs.statuses.forEach(s => {
+        const tag = document.createElement('span');
+        tag.className = 'combat-status-tag';
+        tag.textContent = s;
+        statusWrap.appendChild(tag);
+      });
+      nameWrap.appendChild(statusWrap);
+    }
+
     top.appendChild(nameWrap);
 
     row.appendChild(top);
@@ -1216,17 +1456,20 @@ function renderCombatSkillsList(c) {
 }
 
 addCombatSkillDiceBtn.addEventListener('click', () => {
-  combatSkillDiceDraft.push({ id: generateId(), dieType: 'w6', count: 1, damageType: 'physisch', magicElement: '' });
-  renderDraftDiceRows(combatSkillDiceRows, combatSkillDiceDraft);
+  combatSkillDiceDraft.push({
+    id: generateId(), dieType: 'w6', count: 1, damageType: 'physisch', magicElement: '', target: 'schaden', targetLabel: ''
+  });
+  renderDraftDiceRows(combatSkillDiceRows, combatSkillDiceDraft, { withTarget: true });
 });
 
 function openCombatSkillModal(cs) {
   editingCombatSkillId = cs ? cs.id : null;
   combatSkillModalTitle.textContent = cs ? 'Kampfskill bearbeiten' : 'Neuer Kampfskill';
   combatSkillName.value = cs ? cs.name : '';
+  combatSkillStatuses.value = cs ? (cs.statuses || []).join(', ') : '';
   combatSkillDescription.value = cs ? (cs.description || '') : '';
   combatSkillDiceDraft = cs ? (cs.diceEntries || []).map(e => ({ ...e })) : [];
-  renderDraftDiceRows(combatSkillDiceRows, combatSkillDiceDraft);
+  renderDraftDiceRows(combatSkillDiceRows, combatSkillDiceDraft, { withTarget: true });
   combatSkillDeleteBtn.classList.toggle('hidden', !cs);
   combatSkillSaveBtn.disabled = combatSkillName.value.trim().length === 0;
   combatSkillModal.classList.add('show');
@@ -1255,6 +1498,7 @@ combatSkillSaveBtn.addEventListener('click', () => {
   const entry = {
     id: editingCombatSkillId || generateId(),
     name,
+    statuses: combatSkillStatuses.value.split(',').map(s => s.trim()).filter(Boolean),
     diceEntries: combatSkillDiceDraft.map(d => ({ ...d, id: d.id || generateId() })),
     description: combatSkillDescription.value.trim(),
     included: false
@@ -1958,6 +2202,16 @@ function renderCharacterSheet() {
   if (!c) return;
 
   if (sheetMode === 'normal') {
+    if (c.photo) {
+      chPhotoPreview.src = c.photo;
+      chPhotoPreview.classList.remove('hidden');
+      chPhotoPlaceholder.classList.add('hidden');
+      chPhotoRemoveBtn.classList.remove('hidden');
+    } else {
+      chPhotoPreview.classList.add('hidden');
+      chPhotoPlaceholder.classList.remove('hidden');
+      chPhotoRemoveBtn.classList.add('hidden');
+    }
     setValueIfNotFocused(chName, c.name || '');
     setValueIfNotFocused(chAncestry, c.ancestry || '');
     setValueIfNotFocused(chClass, c.className || '');
@@ -1981,7 +2235,6 @@ function renderCharacterSheet() {
 
     renderWoundsPips(c);
     renderSkillsGrid(c);
-    renderAbilitiesList(c);
     renderInventorySummaries(c);
     renderQuestLog(c);
   } else {
