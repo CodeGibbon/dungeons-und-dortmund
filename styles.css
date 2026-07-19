@@ -730,6 +730,121 @@ h1, h2 { font-family: var(--font-display); margin: 0; }
 
 .checkbox-label-row { margin-bottom: 14px; }
 
+.tabs {
+  display: flex;
+  gap: 6px;
+  background: var(--surface-alt);
+  border-radius: 999px;
+  padding: 4px;
+}
+
+.tab {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 13.5px;
+  padding: 9px 0;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background .15s ease, color .15s ease;
+}
+
+.tab.active {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.sheet-mode-tabs { margin-bottom: 16px; }
+
+.combat-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 20px;
+  margin-bottom: 10px;
+}
+
+.combat-quick-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr;
+  gap: 8px;
+}
+
+.combat-quick-grid .vital-box { padding: 10px 6px; }
+
+.combat-static {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 17px;
+  color: var(--text);
+}
+
+.stat-static {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--text);
+}
+
+.combat-skills-overview {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px 14px;
+}
+
+.combat-skill-cell {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 5px 2px;
+  border-bottom: 1px solid var(--border);
+}
+
+.combat-skill-name { font-size: 12.5px; font-weight: 500; }
+
+.combat-skill-value {
+  font-weight: 700;
+  color: var(--gold);
+  font-size: 13.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.attack-sub-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.attack-sub-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 14px 0 8px;
+}
+
+.attack-lines { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+
+.attack-line {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--surface-alt);
+  border: 1px solid var(--gold);
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+
+.attack-line-name { font-size: 13px; font-weight: 600; }
+.attack-line-dice { font-size: 12px; color: var(--text-muted); }
+
+.ability-effect-row {
+  grid-template-columns: 1.4fr 0.8fr auto;
+}
+
 .item-rows { display: flex; flex-direction: column; gap: 8px; }
 
 .item-row {

@@ -55,11 +55,17 @@
       <div id="charList" class="char-list"></div>
     </div>
 
-    <!-- ===== Charaktere: Haupt-Sheet ===== -->
+    <!-- ===== Charaktere: Detail ===== -->
     <div id="characterDetail" class="hidden">
       <button id="backToList" class="back-btn">&lsaquo; Zurück zur Übersicht</button>
 
-      <div class="sheet">
+      <div class="tabs sheet-mode-tabs">
+        <button id="modeNormalBtn" class="tab active">Normal</button>
+        <button id="modeCombatBtn" class="tab">⚔ Kampf</button>
+      </div>
+
+      <!-- ===== Normal-Modus ===== -->
+      <div id="normalModeView" class="sheet">
         <div class="sheet-header">
           <input id="chName" class="sheet-name-input" placeholder="Charaktername" autocomplete="off">
           <div class="sheet-sub-row">
@@ -104,43 +110,6 @@
           <div class="vital-box"><label>Initiative</label><input id="initiative" type="number"></div>
         </div>
 
-        <div class="sheet-block">
-          <span class="field-label">Armor</span>
-          <div class="armor-compose-row">
-            <div class="armor-compose-field">
-              <label>Rüstung</label>
-              <div id="armorGearSum" class="armor-compose-value readonly">0</div>
-            </div>
-            <span class="armor-compose-op">+</span>
-            <div class="armor-compose-field">
-              <label>Attribut</label>
-              <select id="armorAttrSelect">
-                <option value="str">STR</option>
-                <option value="dex">DEX</option>
-                <option value="int">INT</option>
-                <option value="wil">WIL</option>
-              </select>
-              <div id="armorAttrValue" class="armor-compose-subvalue"></div>
-            </div>
-            <span class="armor-compose-op">+</span>
-            <div class="armor-compose-field">
-              <label>Manuell</label>
-              <input id="armorManual" type="number">
-            </div>
-            <span class="armor-compose-op">=</span>
-            <div class="armor-compose-field">
-              <label>Gesamt</label>
-              <div id="armorTotal" class="armor-compose-value total">0</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="sheet-block">
-          <span class="field-label">Hit Dice (aus angelegten Waffen)</span>
-          <div id="hitDiceEmpty" class="empty-state-inline">Keine Waffe angelegt.</div>
-          <div id="hitDiceList" class="hitdice-list"></div>
-        </div>
-
         <div class="stat-grid">
           <div class="stat-box"><label>STR</label><input id="statStr" type="number"></div>
           <div class="stat-box"><label>DEX</label><input id="statDex" type="number"></div>
@@ -149,11 +118,20 @@
         </div>
 
         <div class="sheet-block">
-          <span class="field-label">Skills &amp; Fähigkeiten</span>
+          <span class="field-label">Skills</span>
           <div class="skills-head-row">
             <span></span><span>Grundwert</span><span>Fähigk.</span><span>Plus</span><span>Gesamt</span>
           </div>
           <div id="skillsGrid" class="skills-grid"></div>
+        </div>
+
+        <div class="sheet-block">
+          <div class="section-title-row">
+            <span class="field-label">Fähigkeiten</span>
+            <button id="addAbilityBtn" type="button" class="btn-add">+ Fähigkeit</button>
+          </div>
+          <div id="abilitiesEmpty" class="empty-state-inline">Noch keine Fähigkeiten.</div>
+          <div id="abilitiesList" class="item-rows"></div>
         </div>
 
         <div class="sheet-block">
@@ -206,6 +184,91 @@
         </div>
 
         <button id="deleteCharacterBtn" type="button" class="btn-danger-outline">Charakter löschen</button>
+      </div>
+
+      <!-- ===== Kampf-Modus (Quicksheet) ===== -->
+      <div id="combatModeView" class="sheet hidden">
+        <div class="sheet-block combat-quick">
+          <div id="combatName" class="combat-name"></div>
+          <div class="combat-quick-grid">
+            <div class="vital-box">
+              <label>HP</label>
+              <div class="hp-row">
+                <input id="combatHpCurrent" type="number" aria-label="Aktuelle HP">
+                <span class="hp-sep">/</span>
+                <span id="combatHpMax" class="combat-static"></span>
+              </div>
+            </div>
+            <div class="vital-box"><label>Speed</label><div id="combatSpeed" class="combat-static"></div></div>
+            <div class="vital-box"><label>Initiative</label><div id="combatInitiative" class="combat-static"></div></div>
+          </div>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat-box"><label>STR</label><div id="combatStr" class="stat-static"></div></div>
+          <div class="stat-box"><label>DEX</label><div id="combatDex" class="stat-static"></div></div>
+          <div class="stat-box"><label>INT</label><div id="combatInt" class="stat-static"></div></div>
+          <div class="stat-box"><label>WIL</label><div id="combatWil" class="stat-static"></div></div>
+        </div>
+
+        <div class="sheet-block">
+          <span class="field-label">Skills (Gesamtwerte)</span>
+          <div id="combatSkillsOverview" class="combat-skills-overview"></div>
+        </div>
+
+        <div class="sheet-block">
+          <span class="field-label">Verteidigung</span>
+          <div class="armor-compose-row">
+            <div class="armor-compose-field">
+              <label>Rüstung</label>
+              <div id="armorGearSum" class="armor-compose-value readonly">0</div>
+            </div>
+            <span class="armor-compose-op">+</span>
+            <div class="armor-compose-field">
+              <label>Attribut</label>
+              <select id="armorAttrSelect">
+                <option value="str">STR</option>
+                <option value="dex">DEX</option>
+                <option value="int">INT</option>
+                <option value="wil">WIL</option>
+              </select>
+              <div id="armorAttrValue" class="armor-compose-subvalue"></div>
+            </div>
+            <span class="armor-compose-op">+</span>
+            <div class="armor-compose-field">
+              <label>Manuell</label>
+              <input id="armorManual" type="number">
+            </div>
+            <span class="armor-compose-op">=</span>
+            <div class="armor-compose-field">
+              <label>Gesamt</label>
+              <div id="armorTotal" class="armor-compose-value total">0</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sheet-block">
+          <span class="field-label">Angriff</span>
+
+          <div class="attack-sub-title">Angelegte Waffen</div>
+          <div id="attackWeaponsEmpty" class="empty-state-inline">Keine Waffe angelegt.</div>
+          <div id="attackWeaponsList" class="attack-lines"></div>
+
+          <div class="attack-sub-head">
+            <span class="attack-sub-title">Eigener Bonus</span>
+            <button id="addAttackBonusDieBtn" type="button" class="btn-add">+ Würfel</button>
+          </div>
+          <div id="attackBonusRows" class="dice-rows"></div>
+
+          <div class="attack-sub-head">
+            <span class="attack-sub-title">Kampfskills</span>
+            <button id="addCombatSkillBtn" type="button" class="btn-add">+ Kampfskill</button>
+          </div>
+          <div id="combatSkillsEmpty" class="empty-state-inline">Noch keine Kampfskills. Haken = zählt zum Gesamtangriff.</div>
+          <div id="combatSkillsList" class="item-rows"></div>
+
+          <div id="attackTotal" class="hitdice-total"></div>
+        </div>
       </div>
     </div>
 
@@ -406,16 +469,32 @@
   <div class="modal-handle"></div>
   <h2 id="abilityModalTitle">Neue Fähigkeit</h2>
   <input id="abilityName" type="text" placeholder="Bezeichnung, z.B. Lügner" autocomplete="off">
-  <div class="field-label">Wirkt auf Skill</div>
-  <select id="abilitySkillSelect"></select>
-  <div class="field-label">Wert (Plus/Minus, absolut)</div>
-  <input id="abilityValue" type="number" value="0">
-  <div class="field-label">Wie funktioniert die Fähigkeit? (optional)</div>
+  <div class="field-label">Wirkt auf Skills (mehrere möglich)</div>
+  <div id="abilityEffectRows" class="dice-rows"></div>
+  <button id="addAbilityEffectBtn" type="button" class="btn-add dice-add-btn">+ Skill hinzufügen</button>
+  <div class="field-label" style="margin-top:14px;">Wie funktioniert die Fähigkeit? (optional)</div>
   <textarea id="abilityDescription" rows="3" placeholder="z.B. Jedes Mal wenn man lügt, verdoppelt sich der Bonus"></textarea>
   <div class="modal-actions">
     <button id="abilityDeleteBtn" class="btn-text btn-danger hidden">Löschen</button>
     <button id="abilityCancelBtn" class="btn-text">Abbrechen</button>
     <button id="abilitySaveBtn" class="btn-primary" disabled>Speichern</button>
+  </div>
+</div>
+
+<!-- Kampfskill hinzufügen/bearbeiten -->
+<div id="combatSkillModal" class="modal">
+  <div class="modal-handle"></div>
+  <h2 id="combatSkillModalTitle">Neuer Kampfskill</h2>
+  <input id="combatSkillName" type="text" placeholder="Bezeichnung, z.B. Wirbelangriff" autocomplete="off">
+  <div class="field-label">Würfel</div>
+  <div id="combatSkillDiceRows" class="dice-rows"></div>
+  <button id="addCombatSkillDiceBtn" type="button" class="btn-add dice-add-btn">+ Würfel hinzufügen</button>
+  <div class="field-label" style="margin-top:14px;">Beschreibung (optional)</div>
+  <textarea id="combatSkillDescription" rows="3" placeholder="Was macht dieser Angriff?"></textarea>
+  <div class="modal-actions">
+    <button id="combatSkillDeleteBtn" class="btn-text btn-danger hidden">Löschen</button>
+    <button id="combatSkillCancelBtn" class="btn-text">Abbrechen</button>
+    <button id="combatSkillSaveBtn" class="btn-primary" disabled>Speichern</button>
   </div>
 </div>
 
