@@ -32,7 +32,7 @@ const DICE_TYPES = ['w4', 'w6', 'w8', 'w10', 'w12', 'w20', 'w100'];
 
 function defaultSkills() {
   const o = {};
-  SKILL_DEFS.forEach(s => { o[s.key] = { bonus: 0 }; });
+  SKILL_DEFS.forEach(s => { o[s.key] = { base: 0, bonus: 0 }; });
   return o;
 }
 
@@ -125,12 +125,15 @@ const combatModeView = el('#combatModeView');
 const weaponsListView = el('#weaponsListView');
 const armorListView = el('#armorListView');
 const itemsListView = el('#itemsListView');
+const abilitiesListView = el('#abilitiesListView');
 const backToSheetFromWeapons = el('#backToSheetFromWeapons');
 const backToSheetFromArmor = el('#backToSheetFromArmor');
 const backToSheetFromItems = el('#backToSheetFromItems');
+const backToSheetFromAbilities = el('#backToSheetFromAbilities');
 const openWeaponsListBtn = el('#openWeaponsListBtn');
 const openArmorListBtn = el('#openArmorListBtn');
 const openItemsListBtn = el('#openItemsListBtn');
+const openAbilitiesListBtn = el('#openAbilitiesListBtn');
 
 const fab = el('#fab');
 const modalBackdrop = el('#modalBackdrop');
@@ -198,10 +201,12 @@ const combatInt = el('#combatInt');
 const combatWil = el('#combatWil');
 const combatSkillsOverview = el('#combatSkillsOverview');
 const armorGearSumEl = el('#armorGearSum');
-const armorAttrSelect = el('#armorAttrSelect');
-const armorAttrValue = el('#armorAttrValue');
+const armorAttrValueBox = el('#armorAttrValueBox');
+const armorAttrName = el('#armorAttrName');
 const armorManual = el('#armorManual');
 const armorTotalEl = el('#armorTotal');
+const armorEquippedEmpty = el('#armorEquippedEmpty');
+const armorEquippedList = el('#armorEquippedList');
 const attackWeaponsEmpty = el('#attackWeaponsEmpty');
 const attackWeaponsList = el('#attackWeaponsList');
 const addAttackBonusDieBtn = el('#addAttackBonusDieBtn');
@@ -213,8 +218,6 @@ const combatItemsEmpty = el('#combatItemsEmpty');
 const combatItemsList = el('#combatItemsList');
 const attackTotalEmpty = el('#attackTotalEmpty');
 const attackTotalList = el('#attackTotalList');
-const otherEffectsEmpty = el('#otherEffectsEmpty');
-const otherEffectsList = el('#otherEffectsList');
 
 // Listen
 const weaponsList = el('#weaponsList');
@@ -226,6 +229,9 @@ const addArmorPieceBtn = el('#addArmorPieceBtn');
 const itemsList = el('#itemsList');
 const itemsEmpty = el('#itemsEmpty');
 const addItemBtn = el('#addItemBtn');
+const abilitiesFullList = el('#abilitiesFullList');
+const abilitiesFullEmpty = el('#abilitiesFullEmpty');
+const addAbilityBtn = el('#addAbilityBtn');
 
 // Modals
 const weaponModal = el('#weaponModal');
@@ -388,8 +394,7 @@ function abilityEffectLabel(effect) {
 }
 
 function skillTotal(c, def) {
-  const attrKey = ATTR_LABEL_TO_KEY[def.attr];
-  const rawBase = attrValue(c, attrKey);
+  const rawBase = Number(c.skills?.[def.key]?.base) || 0;
   const rawBonus = Number(c.skills?.[def.key]?.bonus) || 0;
   let base = rawBase;
   let bonus = rawBonus;
@@ -599,6 +604,7 @@ function showCharList() {
   weaponsListView.classList.add('hidden');
   armorListView.classList.add('hidden');
   itemsListView.classList.add('hidden');
+  abilitiesListView.classList.add('hidden');
   currentCharacterId = null;
   updateFabVisibility();
   renderCharList();
@@ -611,6 +617,7 @@ function showCharacterDetail(id) {
   weaponsListView.classList.add('hidden');
   armorListView.classList.add('hidden');
   itemsListView.classList.add('hidden');
+  abilitiesListView.classList.add('hidden');
   characterDetail.classList.remove('hidden');
   setSheetMode('normal');
   updateFabVisibility();
@@ -646,6 +653,16 @@ openItemsListBtn.addEventListener('click', () => {
 });
 backToSheetFromItems.addEventListener('click', () => {
   itemsListView.classList.add('hidden');
+  characterDetail.classList.remove('hidden');
+});
+
+openAbilitiesListBtn.addEventListener('click', () => {
+  characterDetail.classList.add('hidden');
+  abilitiesListView.classList.remove('hidden');
+  renderAbilitiesFullList(getCurrentCharacter());
+});
+backToSheetFromAbilities.addEventListener('click', () => {
+  abilitiesListView.classList.add('hidden');
   characterDetail.classList.remove('hidden');
 });
 
@@ -798,11 +815,6 @@ bindField(combatHpCurrent, 'hp.current', asNumber);
 
 bindField(woundsMax, 'wounds.max', (v) => Math.max(1, Number(v) || 1));
 
-armorAttrSelect.addEventListener('change', () => {
-  if (!currentCharacterId) return;
-  updateDoc(charRef(currentCharacterId), { 'armor.attrKey': armorAttrSelect.value });
-});
-
 levelUp.addEventListener('click', () => {
   const c = getCurrentCharacter();
   if (!c) return;
@@ -925,8 +937,7 @@ function iconThumb(icon) {
 function buildDiceIcon(dieType) {
   const span = document.createElement('span');
   span.className = 'dice-icon';
-  span.textContent = (dieType || '').replace(/^w/i, '');
-  span.setAttribute('aria-hidden', 'true');
+  span.textContent = (dieType || '').toUpperCase();
   return span;
 }
 
@@ -973,18 +984,41 @@ function renderWoundsPips(c) {
 /* ---------- Armor-Komposition (Kampf-Modus) ---------- */
 
 function renderArmorComposite(c) {
+  const equippedArmor = equippedArmorPieces(c);
   const gearSum = armorGearSumCalc(c);
   armorGearSumEl.textContent = gearSum;
 
-  const attrKey = c.armor?.attrKey || 'dex';
-  if (document.activeElement !== armorAttrSelect) armorAttrSelect.value = attrKey;
+  const attrKey = equippedArmor[0]?.scalesWith || c.armor?.attrKey || 'dex';
   const attrVal = attrValue(c, attrKey);
-  armorAttrValue.textContent = `${attrKey.toUpperCase()}: ${attrVal}`;
+  armorAttrValueBox.textContent = attrVal;
+  armorAttrName.textContent = attrKey.toUpperCase();
 
   if (document.activeElement !== armorManual) armorManual.value = c.armor?.manual ?? 0;
   const manual = c.armor?.manual ?? 0;
 
   armorTotalEl.textContent = gearSum + attrVal + manual;
+
+  renderArmorEquippedList(equippedArmor);
+}
+
+function renderArmorEquippedList(equippedArmor) {
+  armorEquippedList.innerHTML = '';
+  armorEquippedEmpty.style.display = equippedArmor.length ? 'none' : 'block';
+  equippedArmor.forEach(a => {
+    const line = document.createElement('div');
+    line.className = 'attack-line';
+    const label = document.createElement('span');
+    label.className = 'attack-line-name';
+    label.textContent = `${a.name} (Rüstungswert ${a.armorValue || 0}, ${(a.scalesWith || 'dex').toUpperCase()})`;
+    line.appendChild(label);
+    if (a.combatEffect) {
+      const eff = document.createElement('div');
+      eff.className = 'attack-line-effect';
+      eff.textContent = a.combatEffect;
+      line.appendChild(eff);
+    }
+    armorEquippedList.appendChild(line);
+  });
 }
 
 /* ---------- Würfel-Helfer ---------- */
@@ -1158,10 +1192,13 @@ function renderSkillsGrid(c) {
     });
     row.appendChild(nameToggle);
 
-    const baseCell = document.createElement('div');
-    baseCell.className = 'skill-readonly';
-    baseCell.textContent = base;
-    row.appendChild(baseCell);
+    const baseInput = document.createElement('input');
+    baseInput.type = 'number';
+    baseInput.value = base;
+    baseInput.addEventListener('change', () => {
+      updateDoc(charRef(c.id), { [`skills.${def.key}.base`]: Number(baseInput.value) || 0 });
+    });
+    row.appendChild(baseInput);
 
     const abilCell = document.createElement('div');
     abilCell.className = 'skill-readonly';
@@ -1194,13 +1231,6 @@ function renderSkillsGrid(c) {
         panel.appendChild(empty);
       }
       entries.forEach(({ ability, effect }) => panel.appendChild(renderAbilityEffectListRow(c, ability, effect)));
-
-      const addBtn = document.createElement('button');
-      addBtn.type = 'button';
-      addBtn.className = 'btn-add ability-add-row';
-      addBtn.textContent = '+ Fähigkeit';
-      addBtn.addEventListener('click', () => openAbilityModal(null, def.key));
-      panel.appendChild(addBtn);
 
       wrap.appendChild(panel);
     }
@@ -1323,6 +1353,70 @@ addAbilityEffectBtn.addEventListener('click', () => {
   renderAbilityEffectRows();
 });
 
+addAbilityBtn.addEventListener('click', () => openAbilityModal(null, SKILL_DEFS[0].key));
+
+function renderAbilitiesFullList(c) {
+  if (!c) return;
+  const abilities = [...(c.abilities || [])].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  abilitiesFullList.innerHTML = '';
+  abilitiesFullEmpty.style.display = abilities.length ? 'none' : 'block';
+
+  abilities.forEach(ab => {
+    const row = document.createElement('div');
+    row.className = 'item-row';
+
+    const top = document.createElement('div');
+    top.className = 'item-row-top';
+
+    const icon = iconThumb(ab.icon);
+    if (icon) top.appendChild(icon);
+
+    const nameWrap = document.createElement('div');
+    nameWrap.style.flex = '1';
+    const nameEl = document.createElement('div');
+    nameEl.className = 'item-row-name';
+    nameEl.textContent = ab.name;
+    nameWrap.appendChild(nameEl);
+    const tags = document.createElement('div');
+    tags.className = 'item-row-tags';
+    tags.textContent = normalizedEffects(ab)
+      .map(e => `${SKILL_LABELS[e.skillKey] || e.skillKey}: ${abilityEffectLabel(e)}`)
+      .join(' · ') || 'Kein Skill-Effekt';
+    nameWrap.appendChild(tags);
+    top.appendChild(nameWrap);
+
+    row.appendChild(top);
+
+    if (ab.description) {
+      const desc = document.createElement('div');
+      desc.className = 'item-row-desc';
+      desc.textContent = ab.description;
+      row.appendChild(desc);
+    }
+
+    const actions = document.createElement('div');
+    actions.className = 'item-row-actions';
+
+    const editBtn = document.createElement('button');
+    editBtn.textContent = 'Bearbeiten';
+    editBtn.addEventListener('click', () => openAbilityModal(ab));
+    actions.appendChild(editBtn);
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'danger';
+    delBtn.textContent = 'Löschen';
+    delBtn.addEventListener('click', () => {
+      if (!window.confirm(`"${ab.name}" wirklich löschen?`)) return;
+      const abilities = (c.abilities || []).filter(x => x.id !== ab.id);
+      updateDoc(charRef(c.id), { abilities });
+    });
+    actions.appendChild(delBtn);
+
+    row.appendChild(actions);
+    abilitiesFullList.appendChild(row);
+  });
+}
+
 function openAbilityModal(ability, contextSkillKey) {
   editingAbilityId = ability ? ability.id : null;
   abilityModalTitle.textContent = ability ? 'Fähigkeit bearbeiten' : 'Neue Fähigkeit';
@@ -1444,16 +1538,6 @@ addAttackBonusDieBtn.addEventListener('click', () => {
   updateDoc(charRef(c.id), { attackBonusDice: arr });
 });
 
-function buildSourceLine(label, text, colorClass) {
-  const line = document.createElement('div');
-  line.className = 'attack-source-line' + (colorClass ? ' ' + colorClass : '');
-  const b = document.createElement('b');
-  b.textContent = label + ':';
-  line.appendChild(b);
-  line.appendChild(document.createTextNode(' ' + text));
-  return line;
-}
-
 function buildSourceLineNode(label, node, colorClass) {
   const line = document.createElement('div');
   line.className = 'attack-source-line' + (colorClass ? ' ' + colorClass : '');
@@ -1482,6 +1566,12 @@ function renderAttack(c) {
     else dice.textContent = 'keine Würfel';
     line.appendChild(label);
     line.appendChild(dice);
+    if (w.combatEffect) {
+      const eff = document.createElement('div');
+      eff.className = 'attack-line-effect';
+      eff.textContent = w.combatEffect;
+      line.appendChild(eff);
+    }
     attackWeaponsList.appendChild(line);
   });
 
@@ -1491,7 +1581,6 @@ function renderAttack(c) {
 
   const includedSkills = (c.combatSkills || []).filter(s => s.included);
   const includedItems = (c.items || []).filter(i => i.combatItem && i.includedInCombat);
-  const equippedArmor = equippedArmorPieces(c);
 
   const sources = [];
   weapons.forEach(w => sources.push({ label: w.name, entries: w.diceEntries || [], color: 'source-weapon' }));
@@ -1512,43 +1601,6 @@ function renderAttack(c) {
     });
   });
   attackTotalEmpty.style.display = anyDamage ? 'none' : 'block';
-
-  otherEffectsList.innerHTML = '';
-  let anyOther = false;
-
-  sources.forEach(src => {
-    src.entries.filter(e => !isDamageEntry(e)).forEach(e => {
-      anyOther = true;
-      otherEffectsList.appendChild(buildSourceLineNode(src.label, buildDiceEntryFragment(e), src.color));
-    });
-  });
-
-  includedSkills.filter(s => (s.statuses || []).length).forEach(s => {
-    anyOther = true;
-    otherEffectsList.appendChild(buildSourceLine(s.name, 'gewährt ' + s.statuses.join(', '), s.ultimate ? 'source-ultimate' : 'source-skill'));
-  });
-
-  includedSkills.filter(s => s.description).forEach(s => {
-    anyOther = true;
-    otherEffectsList.appendChild(buildSourceLine(s.name, s.description, s.ultimate ? 'source-ultimate' : 'source-skill'));
-  });
-
-  weapons.filter(w => w.combatEffect).forEach(w => {
-    anyOther = true;
-    otherEffectsList.appendChild(buildSourceLine(w.name, w.combatEffect, 'source-weapon'));
-  });
-
-  equippedArmor.filter(a => a.combatEffect).forEach(a => {
-    anyOther = true;
-    otherEffectsList.appendChild(buildSourceLine(a.name, a.combatEffect));
-  });
-
-  includedItems.filter(it => it.combatEffect).forEach(it => {
-    anyOther = true;
-    otherEffectsList.appendChild(buildSourceLine(it.name, it.combatEffect, 'source-item'));
-  });
-
-  otherEffectsEmpty.style.display = anyOther ? 'none' : 'block';
 }
 
 /* ---------- Kampfskills ---------- */
@@ -2315,13 +2367,17 @@ function renderItemsList(c) {
 
 /* ---------- Inventar-Übersicht (nur angelegte Sachen im Normal-Modus) ---------- */
 
-function renderInvSummaryRow(name, tags, desc) {
+function renderInvSummaryRow(name, tags, desc, icon) {
   const row = document.createElement('div');
   row.className = 'inv-summary-row';
+  const head = document.createElement('div');
+  head.className = 'inv-summary-head';
+  if (icon) head.appendChild(icon);
   const n = document.createElement('div');
   n.className = 'inv-summary-name';
   n.textContent = name;
-  row.appendChild(n);
+  head.appendChild(n);
+  row.appendChild(head);
   if (tags) {
     const t = document.createElement('div');
     t.className = 'inv-summary-tags';
@@ -2341,12 +2397,12 @@ function renderInventorySummaries(c) {
   const weapons = equippedWeapons(c);
   equippedWeaponsSummary.innerHTML = '';
   equippedWeaponsEmpty.style.display = weapons.length ? 'none' : 'block';
-  weapons.forEach(w => equippedWeaponsSummary.appendChild(renderInvSummaryRow(w.name, weaponTagsText(w) + (w.diceEntries && w.diceEntries.length ? ' · ' + diceListLabel(w.diceEntries) : ''), w.description)));
+  weapons.forEach(w => equippedWeaponsSummary.appendChild(renderInvSummaryRow(w.name, weaponTagsText(w) + (w.diceEntries && w.diceEntries.length ? ' · ' + diceListLabel(w.diceEntries) : ''), w.description, iconThumb(w.icon))));
 
   const armorPieces = equippedArmorPieces(c);
   equippedArmorSummary.innerHTML = '';
   equippedArmorEmpty.style.display = armorPieces.length ? 'none' : 'block';
-  armorPieces.forEach(a => equippedArmorSummary.appendChild(renderInvSummaryRow(a.name, armorTags(a), a.description)));
+  armorPieces.forEach(a => equippedArmorSummary.appendChild(renderInvSummaryRow(a.name, armorTags(a), a.description, iconThumb(a.icon))));
 }
 
 /* ---------- Geben ---------- */
@@ -2562,6 +2618,7 @@ function renderCharacterSheet() {
   if (!weaponsListView.classList.contains('hidden')) renderWeaponsList(c);
   if (!armorListView.classList.contains('hidden')) renderArmorPiecesList(c);
   if (!itemsListView.classList.contains('hidden')) renderItemsList(c);
+  if (!abilitiesListView.classList.contains('hidden')) renderAbilitiesFullList(c);
 }
 
 /* ---------- Firestore-Listener ---------- */

@@ -26,6 +26,8 @@
 
 * { box-sizing: border-box; }
 
+button, select { color: inherit; font: inherit; }
+
 html {
   background: var(--bg-bottom);
 }
@@ -390,19 +392,33 @@ h1, h2 { font-family: var(--font-display); margin: 0; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 24px;
+  min-width: 32px;
   height: 20px;
-  padding: 0 4px;
+  padding: 0 5px;
   border-radius: 6px;
   background: linear-gradient(160deg, var(--surface-alt), var(--surface));
   border: 1px solid var(--gold);
   color: var(--gold-soft);
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 10.5px;
+  font-size: 10px;
   margin: 0 2px;
   vertical-align: -4px;
   line-height: 1;
+  white-space: nowrap;
+}
+
+.attack-line-effect {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-top: 2px;
+}
+
+.inv-summary-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .sheet-name-input {
@@ -632,6 +648,7 @@ h1, h2 { font-family: var(--font-display); margin: 0; }
   padding: 0;
   text-align: left;
   font-family: var(--font-body);
+  color: var(--text);
 }
 
 .skill-name-toggle .caret {

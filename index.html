@@ -136,6 +136,13 @@
         </div>
 
         <div class="sheet-block">
+          <div class="section-title-row">
+            <span class="field-label">Fähigkeiten</span>
+            <button id="openAbilitiesListBtn" type="button" class="btn-add">Fähigkeitenliste öffnen</button>
+          </div>
+        </div>
+
+        <div class="sheet-block">
           <span class="field-label">Inventar</span>
 
           <div class="inv-category">
@@ -227,13 +234,8 @@
             <span class="armor-compose-op">+</span>
             <div class="armor-compose-field">
               <label>Attribut</label>
-              <select id="armorAttrSelect">
-                <option value="str">STR</option>
-                <option value="dex">DEX</option>
-                <option value="int">INT</option>
-                <option value="wil">WIL</option>
-              </select>
-              <div id="armorAttrValue" class="armor-compose-subvalue"></div>
+              <div id="armorAttrValueBox" class="armor-compose-value readonly">0</div>
+              <div id="armorAttrName" class="armor-compose-subvalue"></div>
             </div>
             <span class="armor-compose-op">+</span>
             <div class="armor-compose-field">
@@ -246,6 +248,9 @@
               <div id="armorTotal" class="armor-compose-value total">0</div>
             </div>
           </div>
+          <div class="attack-sub-title" style="margin-top:14px;">Angelegte Rüstung</div>
+          <div id="armorEquippedEmpty" class="empty-state-inline">Keine Rüstung angelegt.</div>
+          <div id="armorEquippedList" class="attack-lines"></div>
         </div>
 
         <div class="sheet-block">
@@ -281,10 +286,6 @@
           </div>
           <div id="attackTotalEmpty" class="empty-state-inline">Keine Angriffsquelle aktiv.</div>
           <div id="attackTotalList" class="attack-lines"></div>
-
-          <div class="attack-sub-title" style="margin-top:16px;">Kampfeffekte</div>
-          <div id="otherEffectsEmpty" class="empty-state-inline">Keine Kampfeffekte aktiv.</div>
-          <div id="otherEffectsList" class="attack-lines"></div>
         </div>
       </div>
     </div>
@@ -325,6 +326,19 @@
         </div>
         <div id="itemsEmpty" class="empty-state-inline">Noch keine Gegenstände im Rucksack.</div>
         <div id="itemsList" class="item-rows"></div>
+      </div>
+    </div>
+
+    <!-- ===== Fähigkeitenliste ===== -->
+    <div id="abilitiesListView" class="hidden">
+      <button id="backToSheetFromAbilities" type="button" class="back-btn">&lsaquo; Zurück zum Charakterbogen</button>
+      <div class="sheet-block">
+        <div class="section-title-row">
+          <span class="field-label">Fähigkeiten</span>
+          <button id="addAbilityBtn" type="button" class="btn-add">+ Fähigkeit</button>
+        </div>
+        <div id="abilitiesFullEmpty" class="empty-state-inline">Noch keine Fähigkeiten angelegt.</div>
+        <div id="abilitiesFullList" class="item-rows"></div>
       </div>
     </div>
   </div>
