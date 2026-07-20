@@ -371,6 +371,15 @@
   <div class="modal-handle"></div>
   <h2 id="weaponModalTitle">Neue Waffe</h2>
   <input id="weaponName" type="text" placeholder="Name der Waffe" autocomplete="off">
+  <div class="icon-picker-row">
+    <label for="weaponIconInput" class="icon-picker">
+      <img id="weaponIconPreview" class="icon-picker-img hidden" alt="">
+      <span id="weaponIconPlaceholder" class="icon-picker-placeholder">🖼</span>
+    </label>
+    <button id="weaponIconRemoveBtn" type="button" class="icon-picker-remove hidden" aria-label="Icon entfernen">&times;</button>
+    <input id="weaponIconInput" type="file" accept="image/*" class="hidden">
+    <span class="icon-picker-label">Icon (optional)</span>
+  </div>
   <div class="field-row">
     <div class="field-col">
       <div class="field-label">Griff</div>
@@ -395,8 +404,10 @@
   <div id="weaponDiceRows" class="dice-rows"></div>
   <button id="addDiceRowBtn" type="button" class="btn-add dice-add-btn">+ Würfel hinzufügen</button>
 
-  <div class="field-label" style="margin-top:14px;">Besonderheit (optional)</div>
-  <textarea id="weaponDescription" rows="2" placeholder="Was kann die Waffe besonderes?"></textarea>
+  <div class="field-label" style="margin-top:14px;">Besonderheit (optional, allgemein)</div>
+  <textarea id="weaponDescription" rows="2" placeholder="Was kann die Waffe besonderes? (Flavourtext)"></textarea>
+  <div class="field-label" style="margin-top:14px;">Kampfeffekt (optional, nur für den Kampf-Modus)</div>
+  <textarea id="weaponCombatEffect" rows="2" placeholder="Was tut die Waffe konkret im Kampf?"></textarea>
   <div class="modal-actions">
     <button id="weaponDeleteBtn" class="btn-text btn-danger hidden">Löschen</button>
     <button id="weaponCancelBtn" class="btn-text">Abbrechen</button>
@@ -409,6 +420,15 @@
   <div class="modal-handle"></div>
   <h2 id="armorPieceModalTitle">Neue Rüstung</h2>
   <input id="armorPieceName" type="text" placeholder="Name der Rüstung" autocomplete="off">
+  <div class="icon-picker-row">
+    <label for="armorPieceIconInput" class="icon-picker">
+      <img id="armorPieceIconPreview" class="icon-picker-img hidden" alt="">
+      <span id="armorPieceIconPlaceholder" class="icon-picker-placeholder">🖼</span>
+    </label>
+    <button id="armorPieceIconRemoveBtn" type="button" class="icon-picker-remove hidden" aria-label="Icon entfernen">&times;</button>
+    <input id="armorPieceIconInput" type="file" accept="image/*" class="hidden">
+    <span class="icon-picker-label">Icon (optional)</span>
+  </div>
   <div class="field-row">
     <div class="field-col">
       <div class="field-label">Gewichtsklasse</div>
@@ -430,8 +450,10 @@
     <option value="int">INT</option>
     <option value="wil">WIL</option>
   </select>
-  <div class="field-label" style="margin-top:14px;">Besonderheiten (optional)</div>
-  <textarea id="armorPieceDescription" rows="2" placeholder="Was ist an dieser Rüstung besonders?"></textarea>
+  <div class="field-label" style="margin-top:14px;">Besonderheiten (optional, allgemein)</div>
+  <textarea id="armorPieceDescription" rows="2" placeholder="Was ist an dieser Rüstung besonders? (Flavourtext)"></textarea>
+  <div class="field-label" style="margin-top:14px;">Kampfeffekt (optional, nur für den Kampf-Modus)</div>
+  <textarea id="armorPieceCombatEffect" rows="2" placeholder="Was tut die Rüstung konkret im Kampf?"></textarea>
   <div class="modal-actions">
     <button id="armorPieceDeleteBtn" class="btn-text btn-danger hidden">Löschen</button>
     <button id="armorPieceCancelBtn" class="btn-text">Abbrechen</button>
@@ -444,6 +466,15 @@
   <div class="modal-handle"></div>
   <h2 id="itemModalTitle">Neuer Gegenstand</h2>
   <input id="itemName" type="text" placeholder="Bezeichnung" autocomplete="off" list="itemSuggestions">
+  <div class="icon-picker-row">
+    <label for="itemIconInput" class="icon-picker">
+      <img id="itemIconPreview" class="icon-picker-img hidden" alt="">
+      <span id="itemIconPlaceholder" class="icon-picker-placeholder">🖼</span>
+    </label>
+    <button id="itemIconRemoveBtn" type="button" class="icon-picker-remove hidden" aria-label="Icon entfernen">&times;</button>
+    <input id="itemIconInput" type="file" accept="image/*" class="hidden">
+    <span class="icon-picker-label">Icon (optional)</span>
+  </div>
   <datalist id="itemSuggestions">
     <option value="Fackel">
     <option value="Seil (15m)">
@@ -476,16 +507,15 @@
     <label class="checkbox-label"><input id="itemCombatItem" type="checkbox"> Kampfgegenstand (im Kampf-Modus einsetzbar)</label>
   </div>
   <div id="itemCombatFields" class="hidden">
-    <div class="field-label">Reichweite</div>
-    <select id="itemCombatRange">
-      <option value="nahkampf">Nahkampf</option>
-      <option value="fernkampf">Fernkampf</option>
-    </select>
+    <div class="field-label">Reichweite (Meter)</div>
+    <input id="itemCombatRangeMeters" type="number" min="0" value="0">
     <div class="field-label">Schadenswürfel</div>
     <div id="itemCombatDiceRows" class="dice-rows"></div>
     <button id="addItemCombatDiceRowBtn" type="button" class="btn-add dice-add-btn">+ Würfel hinzufügen</button>
+    <div class="field-label" style="margin-top:14px;">Kampfeffekt (optional, nur für den Kampf-Modus)</div>
+    <textarea id="itemCombatEffect" rows="2" placeholder="Was tut der Gegenstand konkret im Kampf?"></textarea>
   </div>
-  <div class="field-label">Was macht der Gegenstand? (optional, gilt auch als Kampfeffekt)</div>
+  <div class="field-label" style="margin-top:14px;">Was macht der Gegenstand? (optional, allgemein)</div>
   <textarea id="itemEffect" rows="2" placeholder="z.B. Heilt 1W8 HP beim Trinken"></textarea>
   <div class="modal-actions">
     <button id="itemDeleteBtn" class="btn-text btn-danger hidden">Löschen</button>
@@ -499,6 +529,15 @@
   <div class="modal-handle"></div>
   <h2 id="abilityModalTitle">Neue Fähigkeit</h2>
   <input id="abilityName" type="text" placeholder="Bezeichnung, z.B. Lügner" autocomplete="off">
+  <div class="icon-picker-row">
+    <label for="abilityIconInput" class="icon-picker">
+      <img id="abilityIconPreview" class="icon-picker-img hidden" alt="">
+      <span id="abilityIconPlaceholder" class="icon-picker-placeholder">🖼</span>
+    </label>
+    <button id="abilityIconRemoveBtn" type="button" class="icon-picker-remove hidden" aria-label="Icon entfernen">&times;</button>
+    <input id="abilityIconInput" type="file" accept="image/*" class="hidden">
+    <span class="icon-picker-label">Icon (optional)</span>
+  </div>
   <div class="field-label">Wirkt auf Skills (mehrere möglich)</div>
   <div id="abilityEffectRows" class="dice-rows"></div>
   <button id="addAbilityEffectBtn" type="button" class="btn-add dice-add-btn">+ Skill hinzufügen</button>
@@ -516,9 +555,20 @@
   <div class="modal-handle"></div>
   <h2 id="combatSkillModalTitle">Neuer Kampfskill</h2>
   <input id="combatSkillName" type="text" placeholder="Bezeichnung, z.B. Wirbelangriff" autocomplete="off">
+  <div class="icon-picker-row">
+    <label for="combatSkillIconInput" class="icon-picker">
+      <img id="combatSkillIconPreview" class="icon-picker-img hidden" alt="">
+      <span id="combatSkillIconPlaceholder" class="icon-picker-placeholder">🖼</span>
+    </label>
+    <button id="combatSkillIconRemoveBtn" type="button" class="icon-picker-remove hidden" aria-label="Icon entfernen">&times;</button>
+    <input id="combatSkillIconInput" type="file" accept="image/*" class="hidden">
+    <span class="icon-picker-label">Icon (optional)</span>
+  </div>
   <div class="checkbox-label-row">
     <label class="checkbox-label"><input id="combatSkillUltimate" type="checkbox"> Als Ultimate markieren</label>
   </div>
+  <div class="field-label">Reichweite (Meter, optional)</div>
+  <input id="combatSkillRangeMeters" type="number" min="0" value="0">
   <div class="field-label">Eigenschaften/Zustände (optional, kommagetrennt)</div>
   <input id="combatSkillStatuses" type="text" placeholder="z.B. Stealth, Unsichtbar" autocomplete="off">
   <div class="field-label">Würfel</div>

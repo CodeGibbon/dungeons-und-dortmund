@@ -86,6 +86,11 @@ let combatSkillDiceDraft = [];
 let itemCombatDiceDraft = [];
 let abilityEffectsDraft = [];
 let expandedSkills = new Set();
+let weaponIconDraft = null;
+let armorPieceIconDraft = null;
+let itemIconDraft = null;
+let abilityIconDraft = null;
+let combatSkillIconDraft = null;
 
 const el = (sel) => document.querySelector(sel);
 
@@ -226,12 +231,17 @@ const addItemBtn = el('#addItemBtn');
 const weaponModal = el('#weaponModal');
 const weaponModalTitle = el('#weaponModalTitle');
 const weaponName = el('#weaponName');
+const weaponIconInput = el('#weaponIconInput');
+const weaponIconPreview = el('#weaponIconPreview');
+const weaponIconPlaceholder = el('#weaponIconPlaceholder');
+const weaponIconRemoveBtn = el('#weaponIconRemoveBtn');
 const weaponHandedness = el('#weaponHandedness');
 const weaponRange = el('#weaponRange');
 const weaponMagical = el('#weaponMagical');
 const weaponDiceRows = el('#weaponDiceRows');
 const addDiceRowBtn = el('#addDiceRowBtn');
 const weaponDescription = el('#weaponDescription');
+const weaponCombatEffect = el('#weaponCombatEffect');
 const weaponSaveBtn = el('#weaponSaveBtn');
 const weaponCancelBtn = el('#weaponCancelBtn');
 const weaponDeleteBtn = el('#weaponDeleteBtn');
@@ -239,10 +249,15 @@ const weaponDeleteBtn = el('#weaponDeleteBtn');
 const armorPieceModal = el('#armorPieceModal');
 const armorPieceModalTitle = el('#armorPieceModalTitle');
 const armorPieceName = el('#armorPieceName');
+const armorPieceIconInput = el('#armorPieceIconInput');
+const armorPieceIconPreview = el('#armorPieceIconPreview');
+const armorPieceIconPlaceholder = el('#armorPieceIconPlaceholder');
+const armorPieceIconRemoveBtn = el('#armorPieceIconRemoveBtn');
 const armorPieceWeightClass = el('#armorPieceWeightClass');
 const armorPieceValue = el('#armorPieceValue');
 const armorPieceScalesWith = el('#armorPieceScalesWith');
 const armorPieceDescription = el('#armorPieceDescription');
+const armorPieceCombatEffect = el('#armorPieceCombatEffect');
 const armorPieceSaveBtn = el('#armorPieceSaveBtn');
 const armorPieceCancelBtn = el('#armorPieceCancelBtn');
 const armorPieceDeleteBtn = el('#armorPieceDeleteBtn');
@@ -250,12 +265,17 @@ const armorPieceDeleteBtn = el('#armorPieceDeleteBtn');
 const itemModal = el('#itemModal');
 const itemModalTitle = el('#itemModalTitle');
 const itemName = el('#itemName');
+const itemIconInput = el('#itemIconInput');
+const itemIconPreview = el('#itemIconPreview');
+const itemIconPlaceholder = el('#itemIconPlaceholder');
+const itemIconRemoveBtn = el('#itemIconRemoveBtn');
 const itemQty = el('#itemQty');
 const itemCombatItem = el('#itemCombatItem');
 const itemCombatFields = el('#itemCombatFields');
-const itemCombatRange = el('#itemCombatRange');
+const itemCombatRangeMeters = el('#itemCombatRangeMeters');
 const itemCombatDiceRows = el('#itemCombatDiceRows');
 const addItemCombatDiceRowBtn = el('#addItemCombatDiceRowBtn');
+const itemCombatEffect = el('#itemCombatEffect');
 const itemEffect = el('#itemEffect');
 const itemSaveBtn = el('#itemSaveBtn');
 const itemCancelBtn = el('#itemCancelBtn');
@@ -264,6 +284,10 @@ const itemDeleteBtn = el('#itemDeleteBtn');
 const abilityModal = el('#abilityModal');
 const abilityModalTitle = el('#abilityModalTitle');
 const abilityName = el('#abilityName');
+const abilityIconInput = el('#abilityIconInput');
+const abilityIconPreview = el('#abilityIconPreview');
+const abilityIconPlaceholder = el('#abilityIconPlaceholder');
+const abilityIconRemoveBtn = el('#abilityIconRemoveBtn');
 const abilityEffectRows = el('#abilityEffectRows');
 const addAbilityEffectBtn = el('#addAbilityEffectBtn');
 const abilityDescription = el('#abilityDescription');
@@ -274,7 +298,12 @@ const abilityDeleteBtn = el('#abilityDeleteBtn');
 const combatSkillModal = el('#combatSkillModal');
 const combatSkillModalTitle = el('#combatSkillModalTitle');
 const combatSkillName = el('#combatSkillName');
+const combatSkillIconInput = el('#combatSkillIconInput');
+const combatSkillIconPreview = el('#combatSkillIconPreview');
+const combatSkillIconPlaceholder = el('#combatSkillIconPlaceholder');
+const combatSkillIconRemoveBtn = el('#combatSkillIconRemoveBtn');
 const combatSkillUltimate = el('#combatSkillUltimate');
+const combatSkillRangeMeters = el('#combatSkillRangeMeters');
 const combatSkillStatuses = el('#combatSkillStatuses');
 const combatSkillDiceRows = el('#combatSkillDiceRows');
 const addCombatSkillDiceBtn = el('#addCombatSkillDiceBtn');
@@ -788,7 +817,7 @@ levelDown.addEventListener('click', () => {
 
 /* ---------- Charakterfoto ---------- */
 
-async function compressImageToDataURL(file, maxDim = 480, quality = 0.75) {
+async function compressImageToDataURL(file, maxDim = 480, quality = 0.75, budget = 400000) {
   const img = await new Promise((resolve, reject) => {
     const image = new Image();
     image.onload = () => resolve(image);
@@ -812,7 +841,7 @@ async function compressImageToDataURL(file, maxDim = 480, quality = 0.75) {
 
   let q = quality;
   let dataUrl = canvas.toDataURL('image/jpeg', q);
-  while (dataUrl.length > 400000 && q > 0.3) {
+  while (dataUrl.length > budget && q > 0.3) {
     q -= 0.1;
     dataUrl = canvas.toDataURL('image/jpeg', q);
   }
@@ -839,6 +868,87 @@ chPhotoRemoveBtn.addEventListener('click', (e) => {
   if (!c) return;
   updateDoc(charRef(c.id), { photo: null });
 });
+
+/* ---------- Icon-Picker (Waffen, Rüstungen, Gegenstände, Fähigkeiten, Kampfskills) ---------- */
+
+function showIconPreview(previewEl, placeholderEl, removeBtnEl, value) {
+  if (value) {
+    previewEl.src = value;
+    previewEl.classList.remove('hidden');
+    placeholderEl.classList.add('hidden');
+    removeBtnEl.classList.remove('hidden');
+  } else {
+    previewEl.classList.add('hidden');
+    placeholderEl.classList.remove('hidden');
+    removeBtnEl.classList.add('hidden');
+  }
+}
+
+function bindIconPicker(inputEl, previewEl, placeholderEl, removeBtnEl, setDraft) {
+  inputEl.addEventListener('change', async () => {
+    const file = inputEl.files[0];
+    if (!file) return;
+    try {
+      const dataUrl = await compressImageToDataURL(file, 120, 0.7, 50000);
+      setDraft(dataUrl);
+      showIconPreview(previewEl, placeholderEl, removeBtnEl, dataUrl);
+    } catch (e) {
+      alert('Icon konnte nicht geladen werden.');
+    } finally {
+      inputEl.value = '';
+    }
+  });
+  removeBtnEl.addEventListener('click', (e) => {
+    e.preventDefault();
+    setDraft(null);
+    showIconPreview(previewEl, placeholderEl, removeBtnEl, null);
+  });
+}
+
+bindIconPicker(weaponIconInput, weaponIconPreview, weaponIconPlaceholder, weaponIconRemoveBtn, (v) => { weaponIconDraft = v; });
+bindIconPicker(armorPieceIconInput, armorPieceIconPreview, armorPieceIconPlaceholder, armorPieceIconRemoveBtn, (v) => { armorPieceIconDraft = v; });
+bindIconPicker(itemIconInput, itemIconPreview, itemIconPlaceholder, itemIconRemoveBtn, (v) => { itemIconDraft = v; });
+bindIconPicker(abilityIconInput, abilityIconPreview, abilityIconPlaceholder, abilityIconRemoveBtn, (v) => { abilityIconDraft = v; });
+bindIconPicker(combatSkillIconInput, combatSkillIconPreview, combatSkillIconPlaceholder, combatSkillIconRemoveBtn, (v) => { combatSkillIconDraft = v; });
+
+function iconThumb(icon) {
+  if (!icon) return null;
+  const img = document.createElement('img');
+  img.src = icon;
+  img.className = 'row-icon-thumb';
+  img.alt = '';
+  return img;
+}
+
+/* ---------- Würfel-Icons ---------- */
+
+function buildDiceIcon(dieType) {
+  const span = document.createElement('span');
+  span.className = 'dice-icon';
+  span.textContent = (dieType || '').replace(/^w/i, '');
+  span.setAttribute('aria-hidden', 'true');
+  return span;
+}
+
+function buildDiceEntryFragment(e) {
+  const frag = document.createDocumentFragment();
+  frag.appendChild(document.createTextNode(`${e.count}×`));
+  frag.appendChild(buildDiceIcon(e.dieType));
+  const suffix = isDamageEntry(e)
+    ? ` (${e.damageType === 'magisch' ? `Magisch${e.magicElement ? ': ' + e.magicElement : ''}` : 'Physisch'})`
+    : ` → ${targetLabelFor(e)}`;
+  frag.appendChild(document.createTextNode(suffix));
+  return frag;
+}
+
+function buildDiceListFragment(entries) {
+  const frag = document.createDocumentFragment();
+  (entries || []).forEach((e, i) => {
+    if (i > 0) frag.appendChild(document.createTextNode(', '));
+    frag.appendChild(buildDiceEntryFragment(e));
+  });
+  return frag;
+}
 
 /* ---------- Wounds ---------- */
 
@@ -1110,6 +1220,9 @@ function renderAbilityEffectListRow(c, ability, effect) {
   check.addEventListener('click', () => toggleAbilityEffect(c, ability.id, effect.id));
   row.appendChild(check);
 
+  const icon = iconThumb(ability.icon);
+  if (icon) row.appendChild(icon);
+
   const info = document.createElement('div');
   info.className = 'ability-row-info';
   const name = document.createElement('div');
@@ -1214,6 +1327,8 @@ function openAbilityModal(ability, contextSkillKey) {
   editingAbilityId = ability ? ability.id : null;
   abilityModalTitle.textContent = ability ? 'Fähigkeit bearbeiten' : 'Neue Fähigkeit';
   abilityName.value = ability ? ability.name : '';
+  abilityIconDraft = ability ? (ability.icon || null) : null;
+  showIconPreview(abilityIconPreview, abilityIconPlaceholder, abilityIconRemoveBtn, abilityIconDraft);
   abilityDescription.value = ability ? (ability.description || '') : '';
   abilityEffectsDraft = ability
     ? normalizedEffects(ability).map(e => ({ ...e }))
@@ -1247,6 +1362,7 @@ abilitySaveBtn.addEventListener('click', () => {
   const entry = {
     id: editingAbilityId || generateId(),
     name,
+    icon: abilityIconDraft,
     effects: abilityEffectsDraft.map(e => ({
       id: e.id || generateId(),
       skillKey: e.skillKey,
@@ -1338,6 +1454,17 @@ function buildSourceLine(label, text, colorClass) {
   return line;
 }
 
+function buildSourceLineNode(label, node, colorClass) {
+  const line = document.createElement('div');
+  line.className = 'attack-source-line' + (colorClass ? ' ' + colorClass : '');
+  const b = document.createElement('b');
+  b.textContent = label + ':';
+  line.appendChild(b);
+  line.appendChild(document.createTextNode(' '));
+  line.appendChild(node);
+  return line;
+}
+
 function renderAttack(c) {
   const weapons = equippedWeapons(c);
   attackWeaponsList.innerHTML = '';
@@ -1351,7 +1478,8 @@ function renderAttack(c) {
     label.textContent = `${i + 1}. ${w.name}`;
     const dice = document.createElement('span');
     dice.className = 'attack-line-dice';
-    dice.textContent = diceListLabel(w.diceEntries) || 'keine Würfel';
+    if (w.diceEntries && w.diceEntries.length) dice.appendChild(buildDiceListFragment(w.diceEntries));
+    else dice.textContent = 'keine Würfel';
     line.appendChild(label);
     line.appendChild(dice);
     attackWeaponsList.appendChild(line);
@@ -1380,7 +1508,7 @@ function renderAttack(c) {
   sources.forEach(src => {
     src.entries.filter(isDamageEntry).forEach(e => {
       anyDamage = true;
-      attackTotalList.appendChild(buildSourceLine(src.label, diceEntryLabel(e), src.color));
+      attackTotalList.appendChild(buildSourceLineNode(src.label, buildDiceEntryFragment(e), src.color));
     });
   });
   attackTotalEmpty.style.display = anyDamage ? 'none' : 'block';
@@ -1391,7 +1519,7 @@ function renderAttack(c) {
   sources.forEach(src => {
     src.entries.filter(e => !isDamageEntry(e)).forEach(e => {
       anyOther = true;
-      otherEffectsList.appendChild(buildSourceLine(src.label, diceEntryLabel(e), src.color));
+      otherEffectsList.appendChild(buildSourceLineNode(src.label, buildDiceEntryFragment(e), src.color));
     });
   });
 
@@ -1400,19 +1528,24 @@ function renderAttack(c) {
     otherEffectsList.appendChild(buildSourceLine(s.name, 'gewährt ' + s.statuses.join(', '), s.ultimate ? 'source-ultimate' : 'source-skill'));
   });
 
-  weapons.filter(w => w.description).forEach(w => {
+  includedSkills.filter(s => s.description).forEach(s => {
     anyOther = true;
-    otherEffectsList.appendChild(buildSourceLine(w.name, w.description, 'source-weapon'));
+    otherEffectsList.appendChild(buildSourceLine(s.name, s.description, s.ultimate ? 'source-ultimate' : 'source-skill'));
   });
 
-  equippedArmor.filter(a => a.description).forEach(a => {
+  weapons.filter(w => w.combatEffect).forEach(w => {
     anyOther = true;
-    otherEffectsList.appendChild(buildSourceLine(a.name, a.description));
+    otherEffectsList.appendChild(buildSourceLine(w.name, w.combatEffect, 'source-weapon'));
   });
 
-  includedItems.filter(it => it.effect).forEach(it => {
+  equippedArmor.filter(a => a.combatEffect).forEach(a => {
     anyOther = true;
-    otherEffectsList.appendChild(buildSourceLine(it.name, it.effect, 'source-item'));
+    otherEffectsList.appendChild(buildSourceLine(a.name, a.combatEffect));
+  });
+
+  includedItems.filter(it => it.combatEffect).forEach(it => {
+    anyOther = true;
+    otherEffectsList.appendChild(buildSourceLine(it.name, it.combatEffect, 'source-item'));
   });
 
   otherEffectsEmpty.style.display = anyOther ? 'none' : 'block';
@@ -1444,6 +1577,9 @@ function renderCombatSkillsList(c) {
     });
     top.appendChild(check);
 
+    const icon = iconThumb(cs.icon);
+    if (icon) top.appendChild(icon);
+
     const nameWrap = document.createElement('div');
     nameWrap.style.flex = '1';
     const nameEl = document.createElement('div');
@@ -1458,7 +1594,9 @@ function renderCombatSkillsList(c) {
     nameWrap.appendChild(nameEl);
     const tags = document.createElement('div');
     tags.className = 'item-row-tags';
-    tags.textContent = diceListLabel(cs.diceEntries) || 'keine Würfel';
+    if (cs.rangeMeters) tags.appendChild(document.createTextNode(`${cs.rangeMeters}m · `));
+    if (cs.diceEntries && cs.diceEntries.length) tags.appendChild(buildDiceListFragment(cs.diceEntries));
+    else tags.appendChild(document.createTextNode('keine Würfel'));
     nameWrap.appendChild(tags);
 
     if ((cs.statuses || []).length) {
@@ -1518,6 +1656,9 @@ function renderCombatItemsList(c) {
     });
     top.appendChild(check);
 
+    const icon = iconThumb(it.icon);
+    if (icon) top.appendChild(icon);
+
     const nameWrap = document.createElement('div');
     nameWrap.style.flex = '1';
     const nameEl = document.createElement('div');
@@ -1526,16 +1667,16 @@ function renderCombatItemsList(c) {
     nameWrap.appendChild(nameEl);
     const tags = document.createElement('div');
     tags.className = 'item-row-tags';
-    tags.textContent = combatItemTags(it);
+    fillCombatItemTags(tags, it);
     nameWrap.appendChild(tags);
     top.appendChild(nameWrap);
 
     row.appendChild(top);
 
-    if (it.effect) {
+    if (it.combatEffect) {
       const desc = document.createElement('div');
       desc.className = 'item-row-desc';
-      desc.textContent = it.effect;
+      desc.textContent = it.combatEffect;
       row.appendChild(desc);
     }
 
@@ -1554,7 +1695,10 @@ function openCombatSkillModal(cs) {
   editingCombatSkillId = cs ? cs.id : null;
   combatSkillModalTitle.textContent = cs ? 'Kampfskill bearbeiten' : 'Neuer Kampfskill';
   combatSkillName.value = cs ? cs.name : '';
+  combatSkillIconDraft = cs ? (cs.icon || null) : null;
+  showIconPreview(combatSkillIconPreview, combatSkillIconPlaceholder, combatSkillIconRemoveBtn, combatSkillIconDraft);
   combatSkillUltimate.checked = cs ? !!cs.ultimate : false;
+  combatSkillRangeMeters.value = cs ? (cs.rangeMeters || 0) : 0;
   combatSkillStatuses.value = cs ? (cs.statuses || []).join(', ') : '';
   combatSkillDescription.value = cs ? (cs.description || '') : '';
   combatSkillDiceDraft = cs ? (cs.diceEntries || []).map(e => ({ ...e })) : [];
@@ -1587,7 +1731,9 @@ combatSkillSaveBtn.addEventListener('click', () => {
   const entry = {
     id: editingCombatSkillId || generateId(),
     name,
+    icon: combatSkillIconDraft,
     ultimate: combatSkillUltimate.checked,
+    rangeMeters: Number(combatSkillRangeMeters.value) || 0,
     statuses: combatSkillStatuses.value.split(',').map(s => s.trim()).filter(Boolean),
     diceEntries: combatSkillDiceDraft.map(d => ({ ...d, id: d.id || generateId() })),
     description: combatSkillDescription.value.trim(),
@@ -1626,10 +1772,13 @@ function openWeaponModal(weapon) {
   editingWeaponId = weapon ? weapon.id : null;
   weaponModalTitle.textContent = weapon ? 'Waffe bearbeiten' : 'Neue Waffe';
   weaponName.value = weapon ? weapon.name : '';
+  weaponIconDraft = weapon ? (weapon.icon || null) : null;
+  showIconPreview(weaponIconPreview, weaponIconPlaceholder, weaponIconRemoveBtn, weaponIconDraft);
   weaponHandedness.value = weapon ? weapon.handedness : 'einhand';
   weaponRange.value = weapon ? weapon.range : 'nahkampf';
   weaponMagical.checked = weapon ? !!weapon.magical : false;
   weaponDescription.value = weapon ? (weapon.description || '') : '';
+  weaponCombatEffect.value = weapon ? (weapon.combatEffect || '') : '';
   weaponDiceDraft = weapon ? (weapon.diceEntries || []).map(e => ({ ...e })) : [];
   renderDraftDiceRows(weaponDiceRows, weaponDiceDraft);
   weaponDeleteBtn.classList.toggle('hidden', !weapon);
@@ -1660,11 +1809,13 @@ weaponSaveBtn.addEventListener('click', () => {
   const entry = {
     id: editingWeaponId || generateId(),
     name,
+    icon: weaponIconDraft,
     handedness: weaponHandedness.value,
     range: weaponRange.value,
     magical: weaponMagical.checked,
     diceEntries: weaponDiceDraft.map(d => ({ ...d, id: d.id || generateId() })),
     description: weaponDescription.value.trim(),
+    combatEffect: weaponCombatEffect.value.trim(),
     equipped: false,
     lastModifiedBy: me,
     lastModifiedAt: Date.now()
@@ -1704,14 +1855,22 @@ function toggleEquip(c, weaponId) {
   updateDoc(charRef(c.id), { weapons });
 }
 
-function weaponTags(w) {
+function weaponTagsText(w) {
   const parts = [
     w.handedness === 'zweihand' ? 'Zweihand' : 'Einhand',
     w.range === 'fernkampf' ? 'Fernkampf' : 'Nahkampf'
   ];
   if (w.magical) parts.push('Magisch');
-  if (w.diceEntries && w.diceEntries.length) parts.push(diceListLabel(w.diceEntries));
   return parts.join(' · ');
+}
+
+function fillWeaponTags(el, w) {
+  el.innerHTML = '';
+  el.appendChild(document.createTextNode(weaponTagsText(w)));
+  if (w.diceEntries && w.diceEntries.length) {
+    el.appendChild(document.createTextNode(' · '));
+    el.appendChild(buildDiceListFragment(w.diceEntries));
+  }
 }
 
 function renderWeaponsList(c) {
@@ -1737,6 +1896,9 @@ function renderWeaponsList(c) {
     check.addEventListener('click', () => toggleEquip(c, w.id));
     top.appendChild(check);
 
+    const icon = iconThumb(w.icon);
+    if (icon) top.appendChild(icon);
+
     const nameWrap = document.createElement('div');
     nameWrap.style.flex = '1';
     const nameEl = document.createElement('div');
@@ -1745,7 +1907,7 @@ function renderWeaponsList(c) {
     nameWrap.appendChild(nameEl);
     const tags = document.createElement('div');
     tags.className = 'item-row-tags';
-    tags.textContent = weaponTags(w);
+    fillWeaponTags(tags, w);
     nameWrap.appendChild(tags);
     top.appendChild(nameWrap);
 
@@ -1803,20 +1965,31 @@ function armorTags(a) {
   return `${wc} · Rüstungswert ${a.armorValue || 0} · skaliert mit ${(a.scalesWith || 'dex').toUpperCase()}`;
 }
 
-function combatItemTags(it) {
-  const parts = [it.combatRange === 'fernkampf' ? 'Fernkampf' : 'Nahkampf'];
-  if (it.combatDiceEntries && it.combatDiceEntries.length) parts.push(diceListLabel(it.combatDiceEntries));
-  return parts.join(' · ');
+function combatItemTagsText(it) {
+  return it.combatRangeMeters ? `${it.combatRangeMeters}m Reichweite` : '';
+}
+
+function fillCombatItemTags(el, it) {
+  el.innerHTML = '';
+  const textPart = combatItemTagsText(it);
+  if (textPart) el.appendChild(document.createTextNode(textPart));
+  if (it.combatDiceEntries && it.combatDiceEntries.length) {
+    if (textPart) el.appendChild(document.createTextNode(' · '));
+    el.appendChild(buildDiceListFragment(it.combatDiceEntries));
+  }
 }
 
 function openArmorPieceModal(piece) {
   editingArmorPieceId = piece ? piece.id : null;
   armorPieceModalTitle.textContent = piece ? 'Rüstung bearbeiten' : 'Neue Rüstung';
   armorPieceName.value = piece ? piece.name : '';
+  armorPieceIconDraft = piece ? (piece.icon || null) : null;
+  showIconPreview(armorPieceIconPreview, armorPieceIconPlaceholder, armorPieceIconRemoveBtn, armorPieceIconDraft);
   armorPieceWeightClass.value = piece ? piece.weightClass : 'leicht';
   armorPieceValue.value = piece ? piece.armorValue : 0;
   armorPieceScalesWith.value = piece ? piece.scalesWith : 'dex';
   armorPieceDescription.value = piece ? (piece.description || '') : '';
+  armorPieceCombatEffect.value = piece ? (piece.combatEffect || '') : '';
   armorPieceDeleteBtn.classList.toggle('hidden', !piece);
   armorPieceSaveBtn.disabled = armorPieceName.value.trim().length === 0;
   armorPieceModal.classList.add('show');
@@ -1845,10 +2018,12 @@ armorPieceSaveBtn.addEventListener('click', () => {
   const entry = {
     id: editingArmorPieceId || generateId(),
     name,
+    icon: armorPieceIconDraft,
     weightClass: armorPieceWeightClass.value,
     armorValue: Number(armorPieceValue.value) || 0,
     scalesWith: armorPieceScalesWith.value,
     description: armorPieceDescription.value.trim(),
+    combatEffect: armorPieceCombatEffect.value.trim(),
     equipped: false,
     lastModifiedBy: me,
     lastModifiedAt: Date.now()
@@ -1905,6 +2080,9 @@ function renderArmorPiecesList(c) {
     check.setAttribute('aria-label', a.equipped ? 'Ablegen' : 'Anlegen');
     check.addEventListener('click', () => toggleArmorEquip(c, a.id));
     top.appendChild(check);
+
+    const icon = iconThumb(a.icon);
+    if (icon) top.appendChild(icon);
 
     const nameWrap = document.createElement('div');
     nameWrap.style.flex = '1';
@@ -1980,12 +2158,15 @@ function openItemModal(item) {
   editingItemId = item ? item.id : null;
   itemModalTitle.textContent = item ? 'Gegenstand bearbeiten' : 'Neuer Gegenstand';
   itemName.value = item ? item.name : '';
+  itemIconDraft = item ? (item.icon || null) : null;
+  showIconPreview(itemIconPreview, itemIconPlaceholder, itemIconRemoveBtn, itemIconDraft);
   itemQty.value = item ? item.qty : 1;
   itemCombatItem.checked = item ? !!item.combatItem : false;
   itemCombatFields.classList.toggle('hidden', !itemCombatItem.checked);
-  itemCombatRange.value = item ? (item.combatRange || 'nahkampf') : 'nahkampf';
+  itemCombatRangeMeters.value = item ? (item.combatRangeMeters || 0) : 0;
   itemCombatDiceDraft = item ? (item.combatDiceEntries || []).map(e => ({ ...e })) : [];
   renderDraftDiceRows(itemCombatDiceRows, itemCombatDiceDraft);
+  itemCombatEffect.value = item ? (item.combatEffect || '') : '';
   itemEffect.value = item ? (item.effect || '') : '';
   itemDeleteBtn.classList.toggle('hidden', !item);
   itemSaveBtn.disabled = itemName.value.trim().length === 0;
@@ -2015,10 +2196,12 @@ itemSaveBtn.addEventListener('click', () => {
   const entry = {
     id: editingItemId || generateId(),
     name,
+    icon: itemIconDraft,
     qty: Math.max(1, parseInt(itemQty.value, 10) || 1),
     combatItem: itemCombatItem.checked,
-    combatRange: itemCombatRange.value,
+    combatRangeMeters: Number(itemCombatRangeMeters.value) || 0,
     combatDiceEntries: itemCombatDiceDraft.map(d => ({ ...d, id: d.id || generateId() })),
+    combatEffect: itemCombatEffect.value.trim(),
     effect: itemEffect.value.trim(),
     includedInCombat: false,
     lastModifiedBy: me,
@@ -2062,6 +2245,9 @@ function renderItemsList(c) {
     qtyBadge.textContent = `${it.qty}×`;
     top.appendChild(qtyBadge);
 
+    const icon = iconThumb(it.icon);
+    if (icon) top.appendChild(icon);
+
     const nameWrap = document.createElement('div');
     nameWrap.style.flex = '1';
     const nameEl = document.createElement('div');
@@ -2071,7 +2257,13 @@ function renderItemsList(c) {
     if (it.combatItem) {
       const tags = document.createElement('div');
       tags.className = 'item-row-tags';
-      tags.textContent = 'Kampfgegenstand · ' + combatItemTags(it);
+      tags.appendChild(document.createTextNode('Kampfgegenstand'));
+      const textPart = combatItemTagsText(it);
+      if (textPart) tags.appendChild(document.createTextNode(' · ' + textPart));
+      if (it.combatDiceEntries && it.combatDiceEntries.length) {
+        tags.appendChild(document.createTextNode(' · '));
+        tags.appendChild(buildDiceListFragment(it.combatDiceEntries));
+      }
       nameWrap.appendChild(tags);
     }
     top.appendChild(nameWrap);
@@ -2149,7 +2341,7 @@ function renderInventorySummaries(c) {
   const weapons = equippedWeapons(c);
   equippedWeaponsSummary.innerHTML = '';
   equippedWeaponsEmpty.style.display = weapons.length ? 'none' : 'block';
-  weapons.forEach(w => equippedWeaponsSummary.appendChild(renderInvSummaryRow(w.name, weaponTags(w), w.description)));
+  weapons.forEach(w => equippedWeaponsSummary.appendChild(renderInvSummaryRow(w.name, weaponTagsText(w) + (w.diceEntries && w.diceEntries.length ? ' · ' + diceListLabel(w.diceEntries) : ''), w.description)));
 
   const armorPieces = equippedArmorPieces(c);
   equippedArmorSummary.innerHTML = '';
