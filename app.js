@@ -389,25 +389,30 @@ function toggleAbilityEffect(c, abilityId, effectId) {
 function abilityEffectLabel(effect) {
   const amount = Number(effect.amount) || 0;
   if (effect.mode === 'multiplyBase') return `Grundwert ×${amount || 1}`;
-  if (effect.mode === 'multiplyBonus') return `Plus ×${amount || 1}`;
+  if (effect.mode === 'multiplyAbility' || effect.mode === 'multiplyBonus') return `Fähigk. ×${amount || 1}`;
   return fmtSigned(amount);
 }
 
+/* Grundwert kann durch Fähigkeiten vervielfacht werden ('multiplyBase'). Der additive
+   Fähigkeiten-Beitrag ('absolute'-Effekte) kann ebenfalls vervielfacht werden
+   ('multiplyAbility') - das bezieht sich NUR auf den Fähigkeitenwert, nie auf Plus.
+   Plus/Bonus ist ein rein manuelles, frei einstellbares Feld und wird nie multipliziert. */
 function skillTotal(c, def) {
   const rawBase = Number(c.skills?.[def.key]?.base) || 0;
   const rawBonus = Number(c.skills?.[def.key]?.bonus) || 0;
+  const effects = effectsForSkill(c, def.key).map(x => x.effect).filter(e => e.active);
+
   let base = rawBase;
-  let bonus = rawBonus;
-  let additive = 0;
-  effectsForSkill(c, def.key).forEach(({ effect }) => {
-    if (!effect.active) return;
-    const amount = Number(effect.amount) || 0;
-    if (effect.mode === 'multiplyBase') base *= (amount || 1);
-    else if (effect.mode === 'multiplyBonus') bonus *= (amount || 1);
-    else additive += amount;
-  });
-  const abil = (base - rawBase) + (bonus - rawBonus) + additive;
-  return { base: rawBase, bonus: rawBonus, abil, total: base + bonus + additive };
+  effects.filter(e => e.mode === 'multiplyBase').forEach(e => { base *= (Number(e.amount) || 1); });
+
+  let abilitySum = effects
+    .filter(e => e.mode === 'absolute')
+    .reduce((s, e) => s + (Number(e.amount) || 0), 0);
+  effects
+    .filter(e => e.mode === 'multiplyAbility' || e.mode === 'multiplyBonus')
+    .forEach(e => { abilitySum *= (Number(e.amount) || 1); });
+
+  return { base: rawBase, bonus: rawBonus, abil: abilitySum, total: base + abilitySum + rawBonus };
 }
 
 function armorGearSumCalc(c) {
@@ -945,8 +950,10 @@ function buildDiceEntryFragment(e) {
   const frag = document.createDocumentFragment();
   frag.appendChild(document.createTextNode(`${e.count}×`));
   frag.appendChild(buildDiceIcon(e.dieType));
+  const mod = modifierSuffix(e);
+  if (mod) frag.appendChild(document.createTextNode(mod));
   const suffix = isDamageEntry(e)
-    ? ` (${e.damageType === 'magisch' ? `Magisch${e.magicElement ? ': ' + e.magicElement : ''}` : 'Physisch'})`
+    ? ` (${e.effectKind === 'heilung' ? 'Heilung' : 'Schaden'}, ${e.damageType === 'magisch' ? `Magisch${e.magicElement ? ': ' + e.magicElement : ''}` : 'Physisch'})`
     : ` → ${targetLabelFor(e)}`;
   frag.appendChild(document.createTextNode(suffix));
   return frag;
@@ -1034,12 +1041,20 @@ function targetLabelFor(e) {
   return 'Schaden';
 }
 
+function modifierSuffix(e) {
+  const m = Number(e.modifier) || 0;
+  if (!m) return '';
+  return m > 0 ? `+${m}` : `${m}`;
+}
+
 function diceEntryLabel(e) {
+  const mod = modifierSuffix(e);
   if (!isDamageEntry(e)) {
-    return `${e.count}×${(e.dieType || '').toUpperCase()} → ${targetLabelFor(e)}`;
+    return `${e.count}×${(e.dieType || '').toUpperCase()}${mod} → ${targetLabelFor(e)}`;
   }
+  const kindLabel = e.effectKind === 'heilung' ? 'Heilung' : 'Schaden';
   const typeLabel = e.damageType === 'magisch' ? `Magisch${e.magicElement ? ': ' + e.magicElement : ''}` : 'Physisch';
-  return `${e.count}×${(e.dieType || '').toUpperCase()} (${typeLabel})`;
+  return `${e.count}×${(e.dieType || '').toUpperCase()}${mod} (${kindLabel}, ${typeLabel})`;
 }
 
 function diceListLabel(entries) {
@@ -1047,6 +1062,20 @@ function diceListLabel(entries) {
 }
 
 function appendDamageFields(row, entry, onStructureChange) {
+  const kindSelect = document.createElement('select');
+  [['schaden', 'Schaden'], ['heilung', 'Heilung']].forEach(([v, l]) => {
+    const opt = document.createElement('option');
+    opt.value = v;
+    opt.textContent = l;
+    if (v === (entry.effectKind || 'schaden')) opt.selected = true;
+    kindSelect.appendChild(opt);
+  });
+  kindSelect.addEventListener('change', () => {
+    entry.effectKind = kindSelect.value;
+    onStructureChange(false);
+  });
+  row.appendChild(kindSelect);
+
   const typeSelect = document.createElement('select');
   [['physisch', 'Physisch'], ['magisch', 'Magisch']].forEach(([v, l]) => {
     const opt = document.createElement('option');
@@ -1071,6 +1100,18 @@ function appendDamageFields(row, entry, onStructureChange) {
     onStructureChange(false);
   });
   row.appendChild(elementInput);
+
+  const modifierInput = document.createElement('input');
+  modifierInput.type = 'number';
+  modifierInput.className = 'dice-modifier-input';
+  modifierInput.placeholder = '±Wert';
+  modifierInput.title = 'Fester Bonus/Malus auf diesen Würfel';
+  modifierInput.value = entry.modifier || 0;
+  modifierInput.addEventListener('change', () => {
+    entry.modifier = Number(modifierInput.value) || 0;
+    onStructureChange(false);
+  });
+  row.appendChild(modifierInput);
 }
 
 /* Generische Würfel-Zeile: draft-Array wird direkt mutiert, onStructureChange(strukturell?) rendert neu.
@@ -1305,13 +1346,14 @@ function buildAbilityEffectRow(index) {
   modeSelect.className = 'effect-mode-select';
   [
     ['absolute', 'Absoluter Bonus (+/-)'],
-    ['multiplyBonus', 'Vervielfacht Plus-Wert'],
+    ['multiplyAbility', 'Vervielfacht Fähigkeitenwert'],
     ['multiplyBase', 'Vervielfacht Grundwert']
   ].forEach(([v, l]) => {
     const opt = document.createElement('option');
     opt.value = v;
     opt.textContent = l;
-    if (v === entry.mode) opt.selected = true;
+    const normalizedMode = entry.mode === 'multiplyBonus' ? 'multiplyAbility' : entry.mode;
+    if (v === normalizedMode) opt.selected = true;
     modeSelect.appendChild(opt);
   });
   modeSelect.addEventListener('change', () => {
@@ -1533,7 +1575,8 @@ addAttackBonusDieBtn.addEventListener('click', () => {
   const c = getCurrentCharacter();
   if (!c) return;
   const arr = [...(c.attackBonusDice || []), {
-    id: generateId(), dieType: 'w6', count: 1, damageType: 'physisch', magicElement: '', target: 'schaden', targetLabel: ''
+    id: generateId(), dieType: 'w6', count: 1, damageType: 'physisch', magicElement: '',
+    effectKind: 'schaden', modifier: 0, target: 'schaden', targetLabel: ''
   }];
   updateDoc(charRef(c.id), { attackBonusDice: arr });
 });
@@ -1738,7 +1781,8 @@ function renderCombatItemsList(c) {
 
 addCombatSkillDiceBtn.addEventListener('click', () => {
   combatSkillDiceDraft.push({
-    id: generateId(), dieType: 'w6', count: 1, damageType: 'physisch', magicElement: '', target: 'schaden', targetLabel: ''
+    id: generateId(), dieType: 'w6', count: 1, damageType: 'physisch', magicElement: '',
+    effectKind: 'schaden', modifier: 0, target: 'schaden', targetLabel: ''
   });
   renderDraftDiceRows(combatSkillDiceRows, combatSkillDiceDraft, { withTarget: true });
 });
@@ -1816,7 +1860,7 @@ combatSkillDeleteBtn.addEventListener('click', () => {
 addWeaponBtn.addEventListener('click', () => openWeaponModal(null));
 
 addDiceRowBtn.addEventListener('click', () => {
-  weaponDiceDraft.push({ id: generateId(), dieType: 'w6', count: 1, damageType: 'physisch', magicElement: '' });
+  weaponDiceDraft.push({ id: generateId(), dieType: 'w6', count: 1, damageType: 'physisch', magicElement: '', effectKind: 'schaden', modifier: 0 });
   renderDraftDiceRows(weaponDiceRows, weaponDiceDraft);
 });
 
@@ -2198,7 +2242,7 @@ function renderArmorPiecesList(c) {
 addItemBtn.addEventListener('click', () => openItemModal(null));
 
 addItemCombatDiceRowBtn.addEventListener('click', () => {
-  itemCombatDiceDraft.push({ id: generateId(), dieType: 'w6', count: 1, damageType: 'physisch', magicElement: '' });
+  itemCombatDiceDraft.push({ id: generateId(), dieType: 'w6', count: 1, damageType: 'physisch', magicElement: '', effectKind: 'schaden', modifier: 0 });
   renderDraftDiceRows(itemCombatDiceRows, itemCombatDiceDraft);
 });
 

@@ -879,6 +879,7 @@ h1, h2 { font-family: var(--font-display); margin: 0; }
 
 .dice-row select.dice-die-select { flex-basis: 62px; }
 .dice-row input.dice-count-input { flex-basis: 46px; }
+.dice-row input.dice-modifier-input { flex-basis: 56px; }
 
 .dice-row-remove {
   border: none;
