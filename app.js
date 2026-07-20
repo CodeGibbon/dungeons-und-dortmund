@@ -83,6 +83,7 @@ let editingCombatSkillId = null;
 let giveContext = null;
 let weaponDiceDraft = [];
 let combatSkillDiceDraft = [];
+let itemCombatDiceDraft = [];
 let abilityEffectsDraft = [];
 let expandedSkills = new Set();
 
@@ -203,6 +204,8 @@ const attackBonusRows = el('#attackBonusRows');
 const addCombatSkillBtn = el('#addCombatSkillBtn');
 const combatSkillsEmpty = el('#combatSkillsEmpty');
 const combatSkillsList = el('#combatSkillsList');
+const combatItemsEmpty = el('#combatItemsEmpty');
+const combatItemsList = el('#combatItemsList');
 const attackTotalEmpty = el('#attackTotalEmpty');
 const attackTotalList = el('#attackTotalList');
 const otherEffectsEmpty = el('#otherEffectsEmpty');
@@ -248,6 +251,11 @@ const itemModal = el('#itemModal');
 const itemModalTitle = el('#itemModalTitle');
 const itemName = el('#itemName');
 const itemQty = el('#itemQty');
+const itemCombatItem = el('#itemCombatItem');
+const itemCombatFields = el('#itemCombatFields');
+const itemCombatRange = el('#itemCombatRange');
+const itemCombatDiceRows = el('#itemCombatDiceRows');
+const addItemCombatDiceRowBtn = el('#addItemCombatDiceRowBtn');
 const itemEffect = el('#itemEffect');
 const itemSaveBtn = el('#itemSaveBtn');
 const itemCancelBtn = el('#itemCancelBtn');
@@ -266,6 +274,7 @@ const abilityDeleteBtn = el('#abilityDeleteBtn');
 const combatSkillModal = el('#combatSkillModal');
 const combatSkillModalTitle = el('#combatSkillModalTitle');
 const combatSkillName = el('#combatSkillName');
+const combatSkillUltimate = el('#combatSkillUltimate');
 const combatSkillStatuses = el('#combatSkillStatuses');
 const combatSkillDiceRows = el('#combatSkillDiceRows');
 const addCombatSkillDiceBtn = el('#addCombatSkillDiceBtn');
@@ -1319,9 +1328,9 @@ addAttackBonusDieBtn.addEventListener('click', () => {
   updateDoc(charRef(c.id), { attackBonusDice: arr });
 });
 
-function buildSourceLine(label, text) {
+function buildSourceLine(label, text, colorClass) {
   const line = document.createElement('div');
-  line.className = 'attack-source-line';
+  line.className = 'attack-source-line' + (colorClass ? ' ' + colorClass : '');
   const b = document.createElement('b');
   b.textContent = label + ':';
   line.appendChild(b);
@@ -1350,12 +1359,20 @@ function renderAttack(c) {
 
   renderAttackBonusRows(c);
   renderCombatSkillsList(c);
+  renderCombatItemsList(c);
+
+  const includedSkills = (c.combatSkills || []).filter(s => s.included);
+  const includedItems = (c.items || []).filter(i => i.combatItem && i.includedInCombat);
+  const equippedArmor = equippedArmorPieces(c);
 
   const sources = [];
-  weapons.forEach(w => sources.push({ label: w.name, entries: w.diceEntries || [] }));
-  if ((c.attackBonusDice || []).length) sources.push({ label: 'Eigener Bonus', entries: c.attackBonusDice });
-  (c.combatSkills || []).filter(s => s.included).forEach(s => {
-    if ((s.diceEntries || []).length) sources.push({ label: s.name, entries: s.diceEntries });
+  weapons.forEach(w => sources.push({ label: w.name, entries: w.diceEntries || [], color: 'source-weapon' }));
+  if ((c.attackBonusDice || []).length) sources.push({ label: 'Eigener Bonus', entries: c.attackBonusDice, color: 'source-weapon' });
+  includedSkills.forEach(s => {
+    if ((s.diceEntries || []).length) sources.push({ label: s.name, entries: s.diceEntries, color: s.ultimate ? 'source-ultimate' : 'source-skill' });
+  });
+  includedItems.forEach(it => {
+    if ((it.combatDiceEntries || []).length) sources.push({ label: it.name, entries: it.combatDiceEntries, color: 'source-item' });
   });
 
   attackTotalList.innerHTML = '';
@@ -1363,23 +1380,41 @@ function renderAttack(c) {
   sources.forEach(src => {
     src.entries.filter(isDamageEntry).forEach(e => {
       anyDamage = true;
-      attackTotalList.appendChild(buildSourceLine(src.label, diceEntryLabel(e)));
+      attackTotalList.appendChild(buildSourceLine(src.label, diceEntryLabel(e), src.color));
     });
   });
   attackTotalEmpty.style.display = anyDamage ? 'none' : 'block';
 
   otherEffectsList.innerHTML = '';
   let anyOther = false;
+
   sources.forEach(src => {
     src.entries.filter(e => !isDamageEntry(e)).forEach(e => {
       anyOther = true;
-      otherEffectsList.appendChild(buildSourceLine(src.label, diceEntryLabel(e)));
+      otherEffectsList.appendChild(buildSourceLine(src.label, diceEntryLabel(e), src.color));
     });
   });
-  (c.combatSkills || []).filter(s => s.included && (s.statuses || []).length).forEach(s => {
+
+  includedSkills.filter(s => (s.statuses || []).length).forEach(s => {
     anyOther = true;
-    otherEffectsList.appendChild(buildSourceLine(s.name, 'gewährt ' + s.statuses.join(', ')));
+    otherEffectsList.appendChild(buildSourceLine(s.name, 'gewährt ' + s.statuses.join(', '), s.ultimate ? 'source-ultimate' : 'source-skill'));
   });
+
+  weapons.filter(w => w.description).forEach(w => {
+    anyOther = true;
+    otherEffectsList.appendChild(buildSourceLine(w.name, w.description, 'source-weapon'));
+  });
+
+  equippedArmor.filter(a => a.description).forEach(a => {
+    anyOther = true;
+    otherEffectsList.appendChild(buildSourceLine(a.name, a.description));
+  });
+
+  includedItems.filter(it => it.effect).forEach(it => {
+    anyOther = true;
+    otherEffectsList.appendChild(buildSourceLine(it.name, it.effect, 'source-item'));
+  });
+
   otherEffectsEmpty.style.display = anyOther ? 'none' : 'block';
 }
 
@@ -1414,6 +1449,12 @@ function renderCombatSkillsList(c) {
     const nameEl = document.createElement('div');
     nameEl.className = 'item-row-name';
     nameEl.textContent = cs.name;
+    if (cs.ultimate) {
+      const badge = document.createElement('span');
+      badge.className = 'ultimate-badge';
+      badge.textContent = 'Ultimate';
+      nameEl.appendChild(badge);
+    }
     nameWrap.appendChild(nameEl);
     const tags = document.createElement('div');
     tags.className = 'item-row-tags';
@@ -1455,6 +1496,53 @@ function renderCombatSkillsList(c) {
   });
 }
 
+function renderCombatItemsList(c) {
+  const items = (c.items || []).filter(i => i.combatItem);
+  combatItemsList.innerHTML = '';
+  combatItemsEmpty.style.display = items.length ? 'none' : 'block';
+
+  items.forEach(it => {
+    const row = document.createElement('div');
+    row.className = 'item-row' + (it.includedInCombat ? ' equipped' : '');
+
+    const top = document.createElement('div');
+    top.className = 'item-row-top';
+
+    const check = document.createElement('button');
+    check.type = 'button';
+    check.className = 'equip-checkbox' + (it.includedInCombat ? ' checked' : '');
+    check.setAttribute('aria-label', it.includedInCombat ? 'Aus Gesamtangriff entfernen' : 'Zum Gesamtangriff hinzufügen');
+    check.addEventListener('click', () => {
+      const items = (c.items || []).map(x => x.id === it.id ? { ...x, includedInCombat: !x.includedInCombat } : x);
+      updateDoc(charRef(c.id), { items });
+    });
+    top.appendChild(check);
+
+    const nameWrap = document.createElement('div');
+    nameWrap.style.flex = '1';
+    const nameEl = document.createElement('div');
+    nameEl.className = 'item-row-name';
+    nameEl.textContent = `${it.name} (${it.qty}×)`;
+    nameWrap.appendChild(nameEl);
+    const tags = document.createElement('div');
+    tags.className = 'item-row-tags';
+    tags.textContent = combatItemTags(it);
+    nameWrap.appendChild(tags);
+    top.appendChild(nameWrap);
+
+    row.appendChild(top);
+
+    if (it.effect) {
+      const desc = document.createElement('div');
+      desc.className = 'item-row-desc';
+      desc.textContent = it.effect;
+      row.appendChild(desc);
+    }
+
+    combatItemsList.appendChild(row);
+  });
+}
+
 addCombatSkillDiceBtn.addEventListener('click', () => {
   combatSkillDiceDraft.push({
     id: generateId(), dieType: 'w6', count: 1, damageType: 'physisch', magicElement: '', target: 'schaden', targetLabel: ''
@@ -1466,6 +1554,7 @@ function openCombatSkillModal(cs) {
   editingCombatSkillId = cs ? cs.id : null;
   combatSkillModalTitle.textContent = cs ? 'Kampfskill bearbeiten' : 'Neuer Kampfskill';
   combatSkillName.value = cs ? cs.name : '';
+  combatSkillUltimate.checked = cs ? !!cs.ultimate : false;
   combatSkillStatuses.value = cs ? (cs.statuses || []).join(', ') : '';
   combatSkillDescription.value = cs ? (cs.description || '') : '';
   combatSkillDiceDraft = cs ? (cs.diceEntries || []).map(e => ({ ...e })) : [];
@@ -1498,6 +1587,7 @@ combatSkillSaveBtn.addEventListener('click', () => {
   const entry = {
     id: editingCombatSkillId || generateId(),
     name,
+    ultimate: combatSkillUltimate.checked,
     statuses: combatSkillStatuses.value.split(',').map(s => s.trim()).filter(Boolean),
     diceEntries: combatSkillDiceDraft.map(d => ({ ...d, id: d.id || generateId() })),
     description: combatSkillDescription.value.trim(),
@@ -1713,6 +1803,12 @@ function armorTags(a) {
   return `${wc} · Rüstungswert ${a.armorValue || 0} · skaliert mit ${(a.scalesWith || 'dex').toUpperCase()}`;
 }
 
+function combatItemTags(it) {
+  const parts = [it.combatRange === 'fernkampf' ? 'Fernkampf' : 'Nahkampf'];
+  if (it.combatDiceEntries && it.combatDiceEntries.length) parts.push(diceListLabel(it.combatDiceEntries));
+  return parts.join(' · ');
+}
+
 function openArmorPieceModal(piece) {
   editingArmorPieceId = piece ? piece.id : null;
   armorPieceModalTitle.textContent = piece ? 'Rüstung bearbeiten' : 'Neue Rüstung';
@@ -1871,11 +1967,25 @@ function renderArmorPiecesList(c) {
 
 addItemBtn.addEventListener('click', () => openItemModal(null));
 
+addItemCombatDiceRowBtn.addEventListener('click', () => {
+  itemCombatDiceDraft.push({ id: generateId(), dieType: 'w6', count: 1, damageType: 'physisch', magicElement: '' });
+  renderDraftDiceRows(itemCombatDiceRows, itemCombatDiceDraft);
+});
+
+itemCombatItem.addEventListener('change', () => {
+  itemCombatFields.classList.toggle('hidden', !itemCombatItem.checked);
+});
+
 function openItemModal(item) {
   editingItemId = item ? item.id : null;
   itemModalTitle.textContent = item ? 'Gegenstand bearbeiten' : 'Neuer Gegenstand';
   itemName.value = item ? item.name : '';
   itemQty.value = item ? item.qty : 1;
+  itemCombatItem.checked = item ? !!item.combatItem : false;
+  itemCombatFields.classList.toggle('hidden', !itemCombatItem.checked);
+  itemCombatRange.value = item ? (item.combatRange || 'nahkampf') : 'nahkampf';
+  itemCombatDiceDraft = item ? (item.combatDiceEntries || []).map(e => ({ ...e })) : [];
+  renderDraftDiceRows(itemCombatDiceRows, itemCombatDiceDraft);
   itemEffect.value = item ? (item.effect || '') : '';
   itemDeleteBtn.classList.toggle('hidden', !item);
   itemSaveBtn.disabled = itemName.value.trim().length === 0;
@@ -1906,12 +2016,17 @@ itemSaveBtn.addEventListener('click', () => {
     id: editingItemId || generateId(),
     name,
     qty: Math.max(1, parseInt(itemQty.value, 10) || 1),
+    combatItem: itemCombatItem.checked,
+    combatRange: itemCombatRange.value,
+    combatDiceEntries: itemCombatDiceDraft.map(d => ({ ...d, id: d.id || generateId() })),
     effect: itemEffect.value.trim(),
+    includedInCombat: false,
     lastModifiedBy: me,
     lastModifiedAt: Date.now()
   };
   if (editingItemId) {
     const idx = items.findIndex(i => i.id === editingItemId);
+    if (idx !== -1) entry.includedInCombat = items[idx].includedInCombat;
     if (idx !== -1) items[idx] = entry; else items.push(entry);
   } else {
     items.push(entry);
@@ -1947,10 +2062,19 @@ function renderItemsList(c) {
     qtyBadge.textContent = `${it.qty}×`;
     top.appendChild(qtyBadge);
 
+    const nameWrap = document.createElement('div');
+    nameWrap.style.flex = '1';
     const nameEl = document.createElement('div');
     nameEl.className = 'item-row-name';
     nameEl.textContent = it.name;
-    top.appendChild(nameEl);
+    nameWrap.appendChild(nameEl);
+    if (it.combatItem) {
+      const tags = document.createElement('div');
+      tags.className = 'item-row-tags';
+      tags.textContent = 'Kampfgegenstand · ' + combatItemTags(it);
+      nameWrap.appendChild(tags);
+    }
+    top.appendChild(nameWrap);
 
     row.appendChild(top);
 

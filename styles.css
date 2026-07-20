@@ -912,11 +912,63 @@ h1, h2 { font-family: var(--font-display); margin: 0; }
   color: var(--text);
   background: var(--surface-alt);
   border: 1px solid var(--border);
+  border-left: 3px solid var(--border);
   border-radius: 8px;
   padding: 7px 10px;
 }
 
 .attack-source-line b { color: var(--gold); font-weight: 700; }
+
+.attack-source-line.source-weapon { border-left-color: #4C9A5B; }
+.attack-source-line.source-weapon b { color: #4C9A5B; }
+
+.attack-source-line.source-skill { border-left-color: #C0453A; }
+.attack-source-line.source-skill b { color: #C0453A; }
+
+.attack-source-line.source-ultimate { border-left-color: var(--gold); }
+.attack-source-line.source-ultimate b { color: var(--gold); }
+
+.attack-source-line.source-item { border-left-color: #3E7FBF; }
+.attack-source-line.source-item b { color: #3E7FBF; }
+
+.attack-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.attack-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
+  color: var(--text-muted);
+}
+
+.attack-legend-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.attack-legend-dot.source-weapon { background: #4C9A5B; }
+.attack-legend-dot.source-skill { background: #C0453A; }
+.attack-legend-dot.source-ultimate { background: var(--gold); }
+.attack-legend-dot.source-item { background: #3E7FBF; }
+
+.ultimate-badge {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--accent-contrast);
+  background: var(--gold);
+  border-radius: 999px;
+  padding: 1px 7px;
+  margin-left: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
 
 .combat-status-tags {
   display: flex;

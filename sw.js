@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dundo-v4';
+const CACHE_NAME = 'dundo-v5';
 const ASSETS = [
   './',
   './index.html',
